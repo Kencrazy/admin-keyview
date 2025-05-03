@@ -1,13 +1,16 @@
 import { useTheme } from "@/hooks/use-theme";
 
-import { Bell, ChevronsLeft, Moon, Search, Sun } from "lucide-react";
+import { Bell, ChevronsLeft, Moon,Sun,ShoppingCart } from "lucide-react";
 
 import profileImg from "@/assets/profile-image.jpg";
 
 import PropTypes from "prop-types";
+import { useState } from "react";
+import Plan from "../components/payup";
 
 export const Header = ({ collapsed, setCollapsed }) => {
     const { theme, setTheme } = useTheme();
+    const [display,setDisplay]=useState(false)
 
     return (
         <header className="relative z-10 flex h-[60px] items-center justify-between bg-white px-4 shadow-md transition-colors dark:bg-slate-900">
@@ -19,17 +22,11 @@ export const Header = ({ collapsed, setCollapsed }) => {
                     <ChevronsLeft className={collapsed && "rotate-180"} />
                 </button>
                 <div className="input">
-                    <Search
+                    <ShoppingCart
                         size={20}
                         className="text-slate-300"
                     />
-                    <input
-                        type="text"
-                        name="search"
-                        id="search"
-                        placeholder="Search..."
-                        className="w-full bg-transparent text-slate-900 outline-0 placeholder:text-slate-300 dark:text-slate-50"
-                    />
+                    <button onClick={()=>setDisplay(!display)} className="cursor-pointer">Plan your next update in 10 days</button>
                 </div>
             </div>
             <div className="flex items-center gap-x-3">
@@ -57,6 +54,11 @@ export const Header = ({ collapsed, setCollapsed }) => {
                     />
                 </button>
             </div>
+
+            {/* Pop up pay up */}
+            {display && (
+                <Plan/>
+            )}
         </header>
     );
 };

@@ -6,14 +6,68 @@ import { overviewData, recentSalesData, topProducts } from "@/constants";
 
 import { Footer } from "@/layouts/footer";
 
-import { CreditCard, DollarSign, Package, PencilLine, Star, Trash, TrendingUp, Users } from "lucide-react";
+import { CreditCard, DollarSign, Package, PencilLine, Star, Trash, TrendingUp, Users,TrendingDown } from "lucide-react";
+
+import Select from "react-select"
+
+import React,{useState} from "react";
 
 const DashboardPage = () => {
+    
+    const customStyles = {
+        control: (base, state) => ({
+        ...base,
+        backgroundColor: state.isDisabled ? "#f1f5f9" : "#fff", // Tailwind: slate-100 / white
+        borderColor: state.isFocused ? "#94a3b8" : "#cbd5e1",   // Focused: slate-400, Normal: slate-300
+        boxShadow: state.isFocused ? "0 0 0 1px #94a3b8" : "none",
+        borderRadius: "0.5rem", // rounded-lg
+        transition: "all 0.2s",
+        }),
+        menu: (base) => ({
+        ...base,
+        backgroundColor: "#ffffff", // white
+        borderRadius: "0.5rem",
+        border: "1px solid #cbd5e1", // slate-300
+        boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+        overflow: "hidden",
+        zIndex: 10,
+        }),
+        option: (base, state) => ({
+        ...base,
+        backgroundColor: state.isFocused ? "#f1f5f9" : "#ffffff", // hover: slate-100
+        color: "#0f172a", // slate-900
+        padding: "0.5rem 0.75rem",
+        cursor: "pointer",
+        }),
+        singleValue: (base) => ({
+        ...base,
+        color: "#0f172a", // slate-900
+        }),
+        dropdownIndicator: (base) => ({
+        ...base,
+        color: "#94a3b8", // slate-400
+        }),
+        indicatorSeparator: () => ({
+        display: "none",
+        }),
+  };
+
     const { theme } = useTheme();
+    
+    const options = [
+        {value:"daily",label:"Daily"},
+        {value:"monthly",label:"Monthly"},
+        {value:"annually",label:"Annually"}
+    ]
+
+    const [selected,setSelected]=useState({value:"daily",label:"Daily"})
 
     return (
         <div className="flex flex-col gap-y-4">
-            <h1 className="title">Dashboard</h1>
+            <div className="flex flex-row justify-between items-center">
+                <h1 className="title">Dashboard</h1>
+                <Select options={options} defaultValue={selected} onChange={setSelected} styles={customStyles} />
+            </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 <div className="card">
                     <div className="card-header">
@@ -186,7 +240,6 @@ const DashboardPage = () => {
                                     <th className="table-head">Price</th>
                                     <th className="table-head">Status</th>
                                     <th className="table-head">Rating</th>
-                                    <th className="table-head">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="table-body">
@@ -220,7 +273,7 @@ const DashboardPage = () => {
                                                 {product.rating}
                                             </div>
                                         </td>
-                                        <td className="table-cell">
+                                        {/* <td className="table-cell">
                                             <div className="flex items-center gap-x-4">
                                                 <button className="text-blue-500 dark:text-blue-600">
                                                     <PencilLine size={20} />
@@ -229,7 +282,7 @@ const DashboardPage = () => {
                                                     <Trash size={20} />
                                                 </button>
                                             </div>
-                                        </td>
+                                        </td> */}
                                     </tr>
                                 ))}
                             </tbody>

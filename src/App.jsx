@@ -4,6 +4,11 @@ import { ThemeProvider } from "@/contexts/theme-context";
 
 import Layout from "@/routes/layout";
 import DashboardPage from "@/routes/dashboard/page";
+import AnalyticsPage from "./routes/analytics/page";
+import ReportPage from "./routes/report/page";
+import Customer from "./routes/customer/page";
+import ProductsPage from "./routes/products/page";
+import SettingsPage from "./routes/settings/page";
 
 function App() {
     const router = createBrowserRouter([
@@ -17,39 +22,23 @@ function App() {
                 },
                 {
                     path: "analytics",
-                    element: <h1 className="title">Analytics</h1>,
+                    element: <AnalyticsPage/>,
                 },
                 {
                     path: "reports",
-                    element: <h1 className="title">Reports</h1>,
+                    element: <ReportPage/>,
                 },
                 {
                     path: "customers",
-                    element: <h1 className="title">Customers</h1>,
-                },
-                {
-                    path: "new-customer",
-                    element: <h1 className="title">New Customer</h1>,
-                },
-                {
-                    path: "verified-customers",
-                    element: <h1 className="title">Verified Customers</h1>,
+                    element: <Customer />,
                 },
                 {
                     path: "products",
-                    element: <h1 className="title">Products</h1>,
-                },
-                {
-                    path: "new-product",
-                    element: <h1 className="title">New Product</h1>,
-                },
-                {
-                    path: "inventory",
-                    element: <h1 className="title">Inventory</h1>,
+                    element: <ProductsPage />,
                 },
                 {
                     path: "settings",
-                    element: <h1 className="title">Settings</h1>,
+                    element: <SettingsPage />,
                 },
             ],
         },
