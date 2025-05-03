@@ -9,9 +9,14 @@ import ReportPage from "./routes/report/page";
 import Customer from "./routes/customer/page";
 import ProductsPage from "./routes/products/page";
 import SettingsPage from "./routes/settings/page";
+import LoginPage from "./routes/login/page";
 
 function App() {
     const router = createBrowserRouter([
+        {
+            path: "/login",
+            element: <LoginPage />,
+        },
         {
             path: "/",
             element: <Layout />,
@@ -22,11 +27,11 @@ function App() {
                 },
                 {
                     path: "analytics",
-                    element: <AnalyticsPage/>,
+                    element: <AnalyticsPage />,
                 },
                 {
                     path: "reports",
-                    element: <ReportPage/>,
+                    element: <ReportPage />,
                 },
                 {
                     path: "customers",
@@ -41,7 +46,7 @@ function App() {
                     element: <SettingsPage />,
                 },
             ],
-        },
+        }
     ]);
 
     return (
