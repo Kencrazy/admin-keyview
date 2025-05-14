@@ -1,12 +1,16 @@
 import React, { useState } from "react";
 import { Switch } from "@headlessui/react";
-
+import { useNavigate } from "react-router-dom";
+import { handleSignOut,handlePasswordReset } from "../../service/authReader";
 export default function SettingsPage() {
+    const navigate = useNavigate();
+    const userData = JSON.parse(localStorage.getItem("userData")) || {};
+    const { name, email } = userData;
     const [emailVerified, setEmailVerified] = useState(false);
     const [twoStepEnabled, setTwoStepEnabled] = useState(true);
 
     return (
-        <div className="p-6 bg-white dark:bg-gray-900 min-h-screen text-gray-900 dark:text-gray-100">
+        <div className="p-6 bg-white dark:bg-gray-900 min-h-fit text-gray-900 dark:text-gray-100">
             <h1 className="text-2xl font-bold">Settings</h1>
 
             <div className="mt-6 bg-gray-100 dark:bg-gray-800 rounded-lg shadow divide-y divide-gray-200 dark:divide-gray-700">
@@ -19,11 +23,8 @@ export default function SettingsPage() {
                         </p>
                     </div>
                     <div className="text-right">
-                        <p className="font-medium">alex.assenmacher@gmail.com</p>
-                        <p className={`text-sm ${emailVerified ? "text-green-500" : "text-red-500"}`}>
-                            {emailVerified ? "Verified" : "Unverified"}
-                        </p>
-                        <button className="text-blue-500 text-sm ml-2 hover:underline">Edit ✎</button>
+                        <p className="font-medium">{email}</p>
+                        <button className="text-blue-500 text-sm ml-2 hover:underline">{name} ✎</button>
                     </div>
                 </div>
 
@@ -35,13 +36,13 @@ export default function SettingsPage() {
                             Set a unique password to protect your account.
                         </p>
                     </div>
-                    <button className="text-sm px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600">
+                    <button onClick={()=>handlePasswordReset(email)} className="text-sm px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600">
                         Change Password
                     </button>
                 </div>
 
                 {/* 2-Step Verification */}
-                <div className="flex items-center justify-between p-4">
+                {/* <div className="flex items-center justify-between p-4">
                     <div>
                         <p className="font-semibold">2-step verification</p>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -60,7 +61,7 @@ export default function SettingsPage() {
                             } inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
                         />
                     </Switch>
-                </div>
+                </div> */}
 
                 {/* Deactivate Account */}
                 <div className="flex items-center justify-between p-4">
@@ -70,7 +71,7 @@ export default function SettingsPage() {
                             This will shut down your account. Your account will be reactive when you sign in again.
                         </p>
                     </div>
-                    <button className="text-blue-500 text-sm hover:underline">Deactivate</button>
+                    <button onClick={()=>handleSignOut(navigate)} className="text-blue-500 text-sm hover:underline">Deactivate</button>
                 </div>
 
                 {/* Delete Account */}

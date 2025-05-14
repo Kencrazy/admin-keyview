@@ -47,6 +47,7 @@ export default function ReportPage() {
     <div className="p-4">
       <h1 className="title">Reports</h1>
       <SearchbarAndFilters
+        showSearchBar={true}
         searchQuery={searchQuery}
         onSearch={e => {
             setSearchQuery(e.target.value);

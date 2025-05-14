@@ -2,17 +2,24 @@ import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "rec
 
 import { useTheme } from "@/hooks/use-theme";
 
-import { overviewData, recentSalesData, topProducts } from "@/constants";
+import { overviewData, recentSalesData, topProducts,recentOrders } from "@/constants";
 
 import { Footer } from "@/layouts/footer";
 
 import { CreditCard, DollarSign, Package, PencilLine, Star, Trash, TrendingUp, Users,TrendingDown } from "lucide-react";
 
-import Select from "react-select"
-
 import React,{useState} from "react";
 
+import SearchbarAndFilters from "../../components/filter";
+
 const DashboardPage = () => {
+    const [fromDate, setFromDate] = useState('');
+    const [toDate, setToDate] = useState('');
+    useState(() => {
+        const currentYear = new Date().getFullYear();
+        setFromDate(`${currentYear}-01-01`);
+        setToDate(`${currentYear}-12-31`);
+    });
     
     const customStyles = {
         control: (base, state) => ({
@@ -53,20 +60,26 @@ const DashboardPage = () => {
   };
 
     const { theme } = useTheme();
-    
-    const options = [
-        {value:"daily",label:"Daily"},
-        {value:"monthly",label:"Monthly"},
-        {value:"annually",label:"Annually"}
-    ]
-
-    const [selected,setSelected]=useState({value:"daily",label:"Daily"})
 
     return (
         <div className="flex flex-col gap-y-4">
-            <div className="flex flex-row justify-between items-center">
+            <div className="flex sm:flex-row flex-col justify-between sm:items-center gap-2">
                 <h1 className="title">Dashboard</h1>
-                <Select options={options} defaultValue={selected} onChange={setSelected} styles={customStyles} />
+                <div className={`flex items-center w-fit h-[46px] gap-2 px-3 bg-white border border-gray-300 rounded-md`}>
+                    <input
+                    type="date"
+                    value={fromDate}
+                    onChange={e=>setFromDate(e.target.value)}
+                    className="h-full text-sm "
+                    />
+                    <span className="text-gray-500 font-semibold">-</span>
+                    <input
+                    type="date"
+                    value={toDate}
+                    onChange={e=>setToDate(e.target.value)}
+                    className="h-full text-sm"
+                    />
+                </div>
             </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 <div className="card">

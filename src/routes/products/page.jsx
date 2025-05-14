@@ -26,7 +26,7 @@ export default function ProductsPage() {
   return (
     <div>
         <h1 className="title">Products</h1>  
-        <SearchbarAndFilters searchQuery={searchQuery} onSearch={(e)=>{
+        <SearchbarAndFilters showSearchBar={true} searchQuery={searchQuery} onSearch={(e)=>{
             setSearchQuery(e.target.value)
             setCurrentPage(1)
         }} showFilters={false} showDateFilters={false} showExportButton={false} showAddProduct={true} addProduct={handleAddProduct}/>

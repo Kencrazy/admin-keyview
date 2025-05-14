@@ -1,5 +1,5 @@
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
-
+import { RouterProvider,createHashRouter } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { ThemeProvider } from "@/contexts/theme-context";
 
 import Layout from "@/routes/layout";
@@ -10,9 +10,26 @@ import Customer from "./routes/customer/page";
 import ProductsPage from "./routes/products/page";
 import SettingsPage from "./routes/settings/page";
 import LoginPage from "./routes/login/page";
+import ForgotPasswordPage from "./routes/forgot/page";
 
 function App() {
-    const router = createBrowserRouter([
+    const [userID, setUserID] = useState(null);
+    const [metaData, setMetaData] = useState({})
+    const [products, setProducts] = useState([])
+    const [orders, setOrders] = useState([])
+    const [terms, setTerms] = useState([])
+    const [settings, setSettings] = useState({})
+    const userId = localStorage.getItem("userId");
+    useEffect(() => {
+        if (userId) {
+            setUserID(userId);
+        } else {
+            setUserID(null);
+        }
+    }
+    , [userId]);
+
+    const router = createHashRouter([
         {
             path: "/login",
             element: <LoginPage />,
@@ -46,6 +63,10 @@ function App() {
                     element: <SettingsPage />,
                 },
             ],
+        },
+        {
+            path: "/forgot-password",
+            element: <ForgotPasswordPage />,
         }
     ]);
 

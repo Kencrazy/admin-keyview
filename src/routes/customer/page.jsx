@@ -55,7 +55,7 @@ export default function Customer() {
   return (
     <div className="">
       <h2 className="title">Customer</h2>
-      <SearchbarAndFilters searchQuery={searchQuery} onSearch={(e)=>{
+      <SearchbarAndFilters showSearchBar={true} searchQuery={searchQuery} onSearch={(e)=>{
         setSearchQuery(e.target.value)
         setCurrentPage(1)
         }} showFilters={false} showDateFilters={false} showExportButton={false} />

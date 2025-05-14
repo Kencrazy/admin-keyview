@@ -9,10 +9,53 @@ import { Header } from "@/layouts/header";
 import { cn } from "@/utils/cn";
 import { useEffect, useRef, useState } from "react";
 
+import { useNavigate } from "react-router-dom";
+import { auth } from "../service/firebaseConfig";
+import { readUserMetadata } from "../service/readFirebase";
 // Pop up service
 
 
 const Layout = () => {
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        const unsubscribe = auth.onAuthStateChanged((user) => {
+            if (user) {
+                if (user.uid !== localStorage.getItem("userId")) {
+                    localStorage.setItem("userId", user.uid);
+                }
+            } else {
+                navigate("/login");
+            }
+        });
+        return () => unsubscribe();
+    }, [navigate]);
+
+    const userId = localStorage.getItem("userId");
+
+    useEffect(()=>{
+        const fetchUserMetadata = async () => {
+            try {
+                const userMetadata = await readUserMetadata(userId);
+                if (userMetadata) {
+                    const userData = {
+                        storeName: userMetadata.storeName,
+                        avatar: userMetadata.avatar,
+                        email: userMetadata.email,
+                        name: userMetadata.name,
+                        shopIcon: userMetadata.shopIcon,
+                        due: userMetadata.due,
+                        plan: userMetadata.plan
+                    };
+                    localStorage.setItem("userData", JSON.stringify(userData));
+                }
+            } catch (error) {
+                console.error("Error fetching user metadata: ", error);
+            }
+        };
+        fetchUserMetadata();
+    },[])
+    
     const isDesktopDevice = useMediaQuery("(min-width: 768px)");
     const [collapsed, setCollapsed] = useState(!isDesktopDevice);
 

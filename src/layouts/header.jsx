@@ -5,12 +5,28 @@ import { Bell, ChevronsLeft, Moon,Sun,ShoppingCart } from "lucide-react";
 import profileImg from "@/assets/profile-image.jpg";
 
 import PropTypes from "prop-types";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Plan from "../components/payup";
+import { readImageFirebase } from "../service/readFirebase";
 
 export const Header = ({ collapsed, setCollapsed }) => {
+    const userData = JSON.parse(localStorage.getItem("userData")) || {};
+    const [profile, setProfileImg] = useState(profileImg);
+    const { avatar,due,plan } = userData;
+    useEffect(() => {
+        const fetchImage = async () => {
+            if (avatar) {
+                const imageUrl = await readImageFirebase(avatar);
+                setProfileImg(imageUrl );
+            }
+        };
+        fetchImage();
+    }
+    , [avatar]);
     const { theme, setTheme } = useTheme();
     const [display,setDisplay]=useState(false)
+
+    const remainingDays = due && plan ? Math.max(0, Math.ceil((new Date(due) - new Date()) / (1000 * 60 * 60 * 24))) : null;
 
     return (
         <header className="relative z-10 flex h-[60px] items-center justify-between bg-white px-4 shadow-md transition-colors dark:bg-slate-900">
@@ -26,7 +42,9 @@ export const Header = ({ collapsed, setCollapsed }) => {
                         size={20}
                         className="text-slate-300"
                     />
-                    <button onClick={()=>setDisplay(!display)} className="cursor-pointer">Plan your next update in 10 days</button>
+                    <button onClick={() => setDisplay(!display)} className="cursor-pointer">
+                        Plan your next update in {remainingDays !== null ? remainingDays : "N/A"} days
+                    </button>
                 </div>
             </div>
             <div className="flex items-center gap-x-3">
@@ -43,12 +61,9 @@ export const Header = ({ collapsed, setCollapsed }) => {
                         className="hidden dark:block"
                     />
                 </button>
-                <button className="btn-ghost size-10">
-                    <Bell size={20} />
-                </button>
                 <button className="size-10 overflow-hidden rounded-full">
                     <img
-                        src={profileImg}
+                        src={profile ? profile : profileImg}
                         alt="profile image"
                         className="size-full object-cover"
                     />
@@ -57,7 +72,7 @@ export const Header = ({ collapsed, setCollapsed }) => {
 
             {/* Pop up pay up */}
             {display && (
-                <Plan/>
+                <Plan />
             )}
         </header>
     );
