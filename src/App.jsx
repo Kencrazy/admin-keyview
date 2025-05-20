@@ -12,22 +12,31 @@ import SettingsPage from "./routes/settings/page";
 import LoginPage from "./routes/login/page";
 import ForgotPasswordPage from "./routes/forgot/page";
 
+import { handleGetData } from "./service/readFirebase";
+
 function App() {
     const [userID, setUserID] = useState(null);
     const [metaData, setMetaData] = useState({})
     const [products, setProducts] = useState([])
     const [orders, setOrders] = useState([])
-    const [terms, setTerms] = useState([])
     const [settings, setSettings] = useState({})
     const userId = localStorage.getItem("userId");
     useEffect(() => {
-        if (userId) {
-            setUserID(userId);
-        } else {
-            setUserID(null);
-        }
-    }
-    , [userId]);
+        const fetchData = async () => {
+            if (userId) {
+                setUserID(userId);
+                const data = await handleGetData();
+                setMetaData(data?.user ?? null);
+                setProducts(data?.products ?? []);
+                setOrders(data?.orders ?? []);
+                setSettings(data?.settings ?? []);
+            } else {
+                setUserID(null);
+            }
+        };
+
+        fetchData();
+    }, [userId]);
 
     const router = createHashRouter([
         {
@@ -40,7 +49,7 @@ function App() {
             children: [
                 {
                     index: true,
-                    element: <DashboardPage />,
+                    element: <DashboardPage productData={products} orderData={orders} />,
                 },
                 {
                     path: "analytics",

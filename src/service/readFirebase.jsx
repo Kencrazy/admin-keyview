@@ -1,6 +1,35 @@
-import { db,storage } from "./firebaseConfig";
-import { doc,getDoc,collection,getDocs } from "firebase/firestore";
-import { ref,getDownloadURL } from "firebase/storage";
+import { auth,db,storage } from "./firebaseConfig";
+import { deleteDoc, doc, collection, query, setDoc, updateDoc, getDoc, getDocs, arrayRemove, arrayUnion, where } from "firebase/firestore";
+import { ref, getDownloadURL, getMetadata } from "firebase/storage";
+
+export const handleGetData = async () => {
+    try{
+        const userId = localStorage.getItem("userId");
+        const userRef = doc(db, "stores", userId);
+        const ordersRef = collection(userRef, "orders");
+        const productsRef = collection(userRef, "products");
+        const settingsRef = collection(userRef, "settings");
+        const docSnap = await getDoc(userRef);
+        const [ordersSnap, productsSnap, settingsSnap] = await Promise.all([
+            getDocs(ordersRef),
+            getDocs(productsRef),
+            getDocs(settingsRef)
+        ]);
+
+        const orders = ordersSnap.empty ? [] : ordersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const products = productsSnap.empty ? [] : productsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const settings = settingsSnap.empty ? [] : settingsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        return {
+            user: docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } : null,
+            orders,
+            products,
+            settings
+        };
+    }catch (error) {
+        console.error("Error getting data: ", error);
+    }
+}
 
 export const readUserMetadata = async () => {
     try {

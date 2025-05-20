@@ -2,62 +2,88 @@ import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "rec
 
 import { useTheme } from "@/hooks/use-theme";
 
-import { overviewData, recentSalesData, topProducts,recentOrders } from "@/constants";
+import { recentSalesData, topProducts,recentOrders } from "@/constants";
 
 import { Footer } from "@/layouts/footer";
 
 import { CreditCard, DollarSign, Package, PencilLine, Star, Trash, TrendingUp, Users,TrendingDown } from "lucide-react";
 
-import React,{useState} from "react";
+import React,{useState,useMemo,useEffect} from "react";
 
-import SearchbarAndFilters from "../../components/filter";
+import { generateOverviewData } from "../../service/interactiveCode";
 
-const DashboardPage = () => {
+const DashboardPage = ({productData,orderData}) => {
     const [fromDate, setFromDate] = useState('');
     const [toDate, setToDate] = useState('');
+
     useState(() => {
         const currentYear = new Date().getFullYear();
         setFromDate(`${currentYear}-01-01`);
         setToDate(`${currentYear}-12-31`);
     });
+    const [overviewData, setOverviewData] = useState();
+
+    useEffect(() => {
+        if (orderData.length > 0) {
+            const dates = orderData.map(order => new Date(order.orderedDate));
+            const minDate = new Date(Math.min(...dates));
+            const maxDate = new Date(Math.max(...dates));
+
+            const formatDate = (date) => date.toISOString().slice(0, 10); 
+
+            setFromDate(formatDate(minDate));
+            setToDate(formatDate(maxDate));
+        }
+    }, [orderData]);
+
+    useEffect(() => {
+        if (fromDate && toDate) {
+            const data = generateOverviewData(orderData, fromDate, toDate);
+            setOverviewData(data);
+        }
+    }, [orderData, fromDate, toDate]);
+
+    const filteredStats = useMemo(() => {
+        const from = new Date(fromDate);
+        const to = new Date(toDate);
+
+        to.setHours(23, 59, 59, 999);
+
+        const filtered = orderData.filter(order => {
+            const orderDate = new Date(order.orderedDate);
+            return (
+                order.status === "Delivered" &&
+                orderDate >= from &&
+                orderDate <= to
+            );
+        });
+
+        const totalRevenue = filtered.reduce((sum, order) => {
+            return sum + order.priceEach * order.quantityOrdered;
+        }, 0);
+
+        const totalSales = filtered.reduce((sum, order) => {
+            return sum + order.quantityOrdered;
+        }, 0);
+
+        const uniqueCustomers = new Set(filtered.map(order => order.customerName));
+
+        return {
+            totalRevenue,
+            totalSales,
+            totalCustomers: uniqueCustomers.size
+        };
+    }, [fromDate, toDate]);
+
+    const formatNumber = (num) => {
+        if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(1) + "B";
+        if (num >= 1_000_000) return (num / 1_000_000).toFixed(1) + "M";
+        if (num >= 1_000) return (num / 1_000).toFixed(1) + "K";
+        return num.toString();
+    };
+
+    console.log(overviewData);
     
-    const customStyles = {
-        control: (base, state) => ({
-        ...base,
-        backgroundColor: state.isDisabled ? "#f1f5f9" : "#fff", // Tailwind: slate-100 / white
-        borderColor: state.isFocused ? "#94a3b8" : "#cbd5e1",   // Focused: slate-400, Normal: slate-300
-        boxShadow: state.isFocused ? "0 0 0 1px #94a3b8" : "none",
-        borderRadius: "0.5rem", // rounded-lg
-        transition: "all 0.2s",
-        }),
-        menu: (base) => ({
-        ...base,
-        backgroundColor: "#ffffff", // white
-        borderRadius: "0.5rem",
-        border: "1px solid #cbd5e1", // slate-300
-        boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-        overflow: "hidden",
-        zIndex: 10,
-        }),
-        option: (base, state) => ({
-        ...base,
-        backgroundColor: state.isFocused ? "#f1f5f9" : "#ffffff", // hover: slate-100
-        color: "#0f172a", // slate-900
-        padding: "0.5rem 0.75rem",
-        cursor: "pointer",
-        }),
-        singleValue: (base) => ({
-        ...base,
-        color: "#0f172a", // slate-900
-        }),
-        dropdownIndicator: (base) => ({
-        ...base,
-        color: "#94a3b8", // slate-400
-        }),
-        indicatorSeparator: () => ({
-        display: "none",
-        }),
-  };
 
     const { theme } = useTheme();
 
@@ -90,7 +116,7 @@ const DashboardPage = () => {
                         <p className="card-title">Total Products</p>
                     </div>
                     <div className="card-body bg-slate-100 transition-colors dark:bg-slate-950">
-                        <p className="text-3xl font-bold text-slate-900 transition-colors dark:text-slate-50">25,154</p>
+                        <p className="text-3xl font-bold text-slate-900 transition-colors dark:text-slate-50">{formatNumber(productData.length)}</p>
                         <span className="flex w-fit items-center gap-x-2 rounded-full border border-blue-500 px-2 py-1 font-medium text-blue-500 dark:border-blue-600 dark:text-blue-600">
                             <TrendingUp size={18} />
                             25%
@@ -105,7 +131,7 @@ const DashboardPage = () => {
                         <p className="card-title">Total Paid Orders</p>
                     </div>
                     <div className="card-body bg-slate-100 transition-colors dark:bg-slate-950">
-                        <p className="text-3xl font-bold text-slate-900 transition-colors dark:text-slate-50">$16,000</p>
+                        <p className="text-3xl font-bold text-slate-900 transition-colors dark:text-slate-50">{formatNumber(filteredStats.totalRevenue.toFixed(2))}</p>
                         <span className="flex w-fit items-center gap-x-2 rounded-full border border-blue-500 px-2 py-1 font-medium text-blue-500 dark:border-blue-600 dark:text-blue-600">
                             <TrendingUp size={18} />
                             12%
@@ -120,7 +146,7 @@ const DashboardPage = () => {
                         <p className="card-title">Total Customers</p>
                     </div>
                     <div className="card-body bg-slate-100 transition-colors dark:bg-slate-950">
-                        <p className="text-3xl font-bold text-slate-900 transition-colors dark:text-slate-50">15,400k</p>
+                        <p className="text-3xl font-bold text-slate-900 transition-colors dark:text-slate-50">{formatNumber(filteredStats.totalCustomers)}</p>
                         <span className="flex w-fit items-center gap-x-2 rounded-full border border-blue-500 px-2 py-1 font-medium text-blue-500 dark:border-blue-600 dark:text-blue-600">
                             <TrendingUp size={18} />
                             15%
@@ -135,7 +161,7 @@ const DashboardPage = () => {
                         <p className="card-title">Sales</p>
                     </div>
                     <div className="card-body bg-slate-100 transition-colors dark:bg-slate-950">
-                        <p className="text-3xl font-bold text-slate-900 transition-colors dark:text-slate-50">12,340</p>
+                        <p className="text-3xl font-bold text-slate-900 transition-colors dark:text-slate-50">{formatNumber(filteredStats.totalSales)}</p>
                         <span className="flex w-fit items-center gap-x-2 rounded-full border border-blue-500 px-2 py-1 font-medium text-blue-500 dark:border-blue-600 dark:text-blue-600">
                             <TrendingUp size={18} />
                             19%
