@@ -16,6 +16,77 @@ function AnalyticsPage() {
             'https://code.highcharts.com/mapdata/countries/vn/vn-all.topo.json'
         ).then(response => response.json());
     
+        /**
+         * Array of region data for Vietnam.
+         * Each entry is a tuple where the first element is a region code (string)
+         * and the second element is a numeric value (number).
+         *
+         * Region codes mapping:
+         * - 'vn-3655': Hà Nội
+         * - 'vn-qn': Quảng Ninh
+         * - 'vn-kh': Khánh Hòa
+         * - 'vn-tg': Tiền Giang
+         * - 'vn-bv': Bà Rịa - Vũng Tàu
+         * - 'vn-bu': Bình Dương
+         * - 'vn-hc': Hồ Chí Minh
+         * - 'vn-br': Bà Rịa - Vũng Tàu
+         * - 'vn-st': Sóc Trăng
+         * - 'vn-pt': Phan Thiết (Bình Thuận)
+         * - 'vn-yb': Yên Bái
+         * - 'vn-hd': Hải Dương
+         * - 'vn-bn': Bắc Ninh
+         * - 'vn-317': Hải Phòng
+         * - 'vn-nb': Ninh Bình
+         * - 'vn-hm': Hà Nam
+         * - 'vn-ho': Hòa Bình
+         * - 'vn-vc': Vĩnh Phúc
+         * - 'vn-318': Nam Định
+         * - 'vn-bg': Bắc Giang
+         * - 'vn-tb': Thái Bình
+         * - 'vn-ld': Lâm Đồng
+         * - 'vn-bp': Bình Phước
+         * - 'vn-py': Phú Yên
+         * - 'vn-bd': Bình Định
+         * - 'vn-724': Tây Ninh
+         * - 'vn-qg': Quảng Ngãi
+         * - 'vn-331': Cần Thơ
+         * - 'vn-dt': Đồng Tháp
+         * - 'vn-la': Long An
+         * - 'vn-3623': Đắk Lắk
+         * - 'vn-337': Đà Nẵng
+         * - 'vn-bl': Bạc Liêu
+         * - 'vn-vl': Vĩnh Long
+         * - 'vn-tn': Thái Nguyên
+         * - 'vn-ty': Tuyên Quang
+         * - 'vn-li': Lai Châu
+         * - 'vn-311': Bắc Kạn
+         * - 'vn-hg': Hà Giang
+         * - 'vn-nd': Nam Định
+         * - 'vn-328': Quảng Bình
+         * - 'vn-na': Nghệ An
+         * - 'vn-qb': Quảng Bình
+         * - 'vn-723': Bình Thuận
+         * - 'vn-nt': Ninh Thuận
+         * - 'vn-6365': Đắk Nông
+         * - 'vn-299': Kiên Giang
+         * - 'vn-300': Cà Mau
+         * - 'vn-qt': Quảng Trị
+         * - 'vn-tt': Thừa Thiên Huế
+         * - 'vn-da': Đà Nẵng
+         * - 'vn-ag': An Giang
+         * - 'vn-cm': Cà Mau
+         * - 'vn-tv': Trà Vinh
+         * - 'vn-cb': Cao Bằng
+         * - 'vn-kg': Kiên Giang
+         * - 'vn-lo': Lào Cai
+         * - 'vn-db': Điện Biên
+         * - 'vn-ls': Lạng Sơn
+         * - 'vn-th': Thanh Hóa
+         * - 'vn-307': Quảng Nam
+         * - 'vn-tq': Tuyên Quang
+         * - 'vn-bi': Biên Hòa (Đồng Nai)
+         * - 'vn-333': Hậu Giang
+         */
         const data = [
             ['vn-3655', 10], ['vn-qn', 11], ['vn-kh', 12], ['vn-tg', 13],
             ['vn-bv', 14], ['vn-bu', 15], ['vn-hc', 16], ['vn-br', 17],

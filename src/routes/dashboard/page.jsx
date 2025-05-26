@@ -2,11 +2,11 @@ import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "rec
 
 import { useTheme } from "@/hooks/use-theme";
 
-import { recentSalesData, topProducts,recentOrders } from "@/constants";
+import { recentSalesData,recentOrders } from "@/constants";
 
 import { Footer } from "@/layouts/footer";
 
-import { CreditCard, DollarSign, Package, PencilLine, Star, Trash, TrendingUp, Users,TrendingDown } from "lucide-react";
+import { CreditCard, DollarSign, Package, Star, TrendingUp, Users,TrendingDown } from "lucide-react";
 
 import React,{useState,useMemo,useEffect} from "react";
 
@@ -15,6 +15,71 @@ import { generateOverviewData } from "../../service/interactiveCode";
 const DashboardPage = ({productData,orderData}) => {
     const [fromDate, setFromDate] = useState('');
     const [toDate, setToDate] = useState('');
+    const [topProducts,setTopProducts] = useState([]);
+
+    // State variables for the dashboard
+    const [totalProductsCompared,setTotalProductsCompared] = useState(0);
+    const [totalPaidOrdersCompared,setTotalPaidOrdersCompared] = useState(0);
+    const [totalCustomersCompared,setTotalCustomersCompared] = useState(0);
+    const [totalSalesCompared,setTotalSalesCompared] = useState(0);
+
+    useEffect(() => {
+        const now = new Date();
+        const currentMonth = now.getMonth(); 
+        const currentYear = now.getFullYear();
+
+        const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+        const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+
+        const thisMonthOrders = orderData.filter(order => {
+            const date = new Date(order.orderedDate);
+            return (
+                date.getFullYear() === currentYear &&
+                date.getMonth() === currentMonth &&
+                order.status === "Delivered"
+            );
+        });
+
+        const lastMonthOrders = orderData.filter(order => {
+            const date = new Date(order.orderedDate);
+            return (
+                date.getFullYear() === lastMonthYear &&
+                date.getMonth() === lastMonth &&
+                order.status === "Delivered"
+            );
+        });
+
+        const getStats = (orders) => {
+            const totalRevenue = orders.reduce((sum, o) => sum + o.priceEach * o.quantityOrdered, 0);
+            const totalSales = orders.reduce((sum, o) => sum + o.quantityOrdered, 0);
+            const totalCustomers = new Set(orders.map(o => o.customerName)).size;
+            return { totalRevenue, totalSales, totalCustomers };
+        };
+
+        const thisMonthStats = getStats(thisMonthOrders);
+        const lastMonthStats = getStats(lastMonthOrders);
+
+        const percent = (current, prev) => {
+            if (prev === 0 && current > 0) return 100;
+            if (prev === 0 && current === 0) return 0;
+            return Math.round(((current - prev) / prev) * 100);
+        };
+
+        setTotalPaidOrdersCompared(percent(thisMonthStats.totalRevenue, lastMonthStats.totalRevenue));
+        setTotalSalesCompared(percent(thisMonthStats.totalSales, lastMonthStats.totalSales));
+        setTotalCustomersCompared(percent(thisMonthStats.totalCustomers, lastMonthStats.totalCustomers));
+
+        const thisMonthProducts = productData.filter(p => {
+            const created = new Date(p.createdAt); 
+            return created.getFullYear() === currentYear && created.getMonth() === currentMonth;
+        });
+        const lastMonthProducts = productData.filter(p => {
+            const created = new Date(p.createdAt);
+            return created.getFullYear() === lastMonthYear && created.getMonth() === lastMonth;
+        });
+
+        setTotalProductsCompared(percent(thisMonthProducts.length, lastMonthProducts.length));
+    }, [orderData, productData]);
 
     useState(() => {
         const currentYear = new Date().getFullYear();
@@ -22,6 +87,20 @@ const DashboardPage = ({productData,orderData}) => {
         setToDate(`${currentYear}-12-31`);
     });
     const [overviewData, setOverviewData] = useState();
+
+    useEffect(() => {
+        if (!productData || productData.length === 0) setTopProducts([]);
+
+        const sorted = [...productData]
+            .sort((a, b) => {
+            if (b.amount !== a.amount) {
+                return b.amount - a.amount;
+            }
+            return b.rating - a.rating;
+            });
+
+        setTopProducts(sorted.slice(0,20))
+    }, [productData]);
 
     useEffect(() => {
         if (orderData.length > 0) {
@@ -82,30 +161,12 @@ const DashboardPage = ({productData,orderData}) => {
         return num.toString();
     };
 
-    console.log(overviewData);
-    
-
     const { theme } = useTheme();
 
     return (
         <div className="flex flex-col gap-y-4">
             <div className="flex sm:flex-row flex-col justify-between sm:items-center gap-2">
                 <h1 className="title">Dashboard</h1>
-                <div className={`flex items-center w-fit h-[46px] gap-2 px-3 bg-white border border-gray-300 rounded-md`}>
-                    <input
-                    type="date"
-                    value={fromDate}
-                    onChange={e=>setFromDate(e.target.value)}
-                    className="h-full text-sm "
-                    />
-                    <span className="text-gray-500 font-semibold">-</span>
-                    <input
-                    type="date"
-                    value={toDate}
-                    onChange={e=>setToDate(e.target.value)}
-                    className="h-full text-sm"
-                    />
-                </div>
             </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 <div className="card">
@@ -117,9 +178,13 @@ const DashboardPage = ({productData,orderData}) => {
                     </div>
                     <div className="card-body bg-slate-100 transition-colors dark:bg-slate-950">
                         <p className="text-3xl font-bold text-slate-900 transition-colors dark:text-slate-50">{formatNumber(productData.length)}</p>
-                        <span className="flex w-fit items-center gap-x-2 rounded-full border border-blue-500 px-2 py-1 font-medium text-blue-500 dark:border-blue-600 dark:text-blue-600">
-                            <TrendingUp size={18} />
-                            25%
+                        <span
+                            className={`flex w-fit items-center gap-x-2 rounded-full border px-2 py-1 font-medium
+                                ${totalProductsCompared >= 0
+                                    ? 'border-green-500 text-green-500 dark:border-green-400 dark:text-green-400'
+                                    : 'border-red-500 text-red-500 dark:border-red-400 dark:text-red-400'}`}>
+                            {totalProductsCompared >= 0 ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
+                            {Math.abs(totalPaidOrdersCompared)}%
                         </span>
                     </div>
                 </div>
@@ -132,9 +197,13 @@ const DashboardPage = ({productData,orderData}) => {
                     </div>
                     <div className="card-body bg-slate-100 transition-colors dark:bg-slate-950">
                         <p className="text-3xl font-bold text-slate-900 transition-colors dark:text-slate-50">{formatNumber(filteredStats.totalRevenue.toFixed(2))}</p>
-                        <span className="flex w-fit items-center gap-x-2 rounded-full border border-blue-500 px-2 py-1 font-medium text-blue-500 dark:border-blue-600 dark:text-blue-600">
-                            <TrendingUp size={18} />
-                            12%
+                        <span
+                            className={`flex w-fit items-center gap-x-2 rounded-full border px-2 py-1 font-medium
+                                ${totalPaidOrdersCompared >= 0
+                                    ? 'border-green-500 text-green-500 dark:border-green-400 dark:text-green-400'
+                                    : 'border-red-500 text-red-500 dark:border-red-400 dark:text-red-400'}`}>
+                            {totalPaidOrdersCompared >= 0 ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
+                            {Math.abs(totalPaidOrdersCompared)}%
                         </span>
                     </div>
                 </div>
@@ -147,10 +216,14 @@ const DashboardPage = ({productData,orderData}) => {
                     </div>
                     <div className="card-body bg-slate-100 transition-colors dark:bg-slate-950">
                         <p className="text-3xl font-bold text-slate-900 transition-colors dark:text-slate-50">{formatNumber(filteredStats.totalCustomers)}</p>
-                        <span className="flex w-fit items-center gap-x-2 rounded-full border border-blue-500 px-2 py-1 font-medium text-blue-500 dark:border-blue-600 dark:text-blue-600">
-                            <TrendingUp size={18} />
-                            15%
-                        </span>
+                <span
+                    className={`flex w-fit items-center gap-x-2 rounded-full border px-2 py-1 font-medium
+                        ${totalCustomersCompared >= 0
+                            ? 'border-green-500 text-green-500 dark:border-green-400 dark:text-green-400'
+                            : 'border-red-500 text-red-500 dark:border-red-400 dark:text-red-400'}`}>
+                    {totalCustomersCompared >= 0 ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
+                    {Math.abs(totalCustomersCompared)}%
+                </span>
                     </div>
                 </div>
                 <div className="card">
@@ -162,18 +235,42 @@ const DashboardPage = ({productData,orderData}) => {
                     </div>
                     <div className="card-body bg-slate-100 transition-colors dark:bg-slate-950">
                         <p className="text-3xl font-bold text-slate-900 transition-colors dark:text-slate-50">{formatNumber(filteredStats.totalSales)}</p>
-                        <span className="flex w-fit items-center gap-x-2 rounded-full border border-blue-500 px-2 py-1 font-medium text-blue-500 dark:border-blue-600 dark:text-blue-600">
-                            <TrendingUp size={18} />
-                            19%
-                        </span>
+                 <span
+                    className={`flex w-fit items-center gap-x-2 rounded-full border px-2 py-1 font-medium
+                        ${totalSalesCompared >= 0
+                            ? 'border-green-500 text-green-500 dark:border-green-400 dark:text-green-400'
+                            : 'border-red-500 text-red-500 dark:border-red-400 dark:text-red-400'}`}>
+                    {totalSalesCompared >= 0 ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
+                    {Math.abs(totalSalesCompared)}%
+                </span>
                     </div>
                 </div>
             </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-7">
                 <div className="card col-span-1 md:col-span-2 lg:col-span-4">
-                    <div className="card-header">
-                        <p className="card-title">Overview</p>
+                    <div className="flex flex-row items-center justify-between gap-x-4 px-4">
+                        <div className="card-header">
+                            <p className="card-title">Overview</p>
+                        </div>
+                        <div className={`flex items-center w-fit h-[30px] gap-2 px-3 dark:text-white dark:bg-[#3B3B3B] bg-white border border-gray-300 rounded-md`}>
+                            <input
+                            type="date"
+                            value={fromDate}
+                            onChange={e=>setFromDate(e.target.value)}
+                            className="h-full text-sm"
+                            style={{colorScheme: theme === "light" ? "light" : "dark"}}
+                            />
+                            <span className="dark:text-white text-gray-500 font-semibold">-</span>
+                            <input
+                            type="date"
+                            value={toDate}
+                            onChange={e=>setToDate(e.target.value)}
+                            className="h-full text-sm"
+                            style={{colorScheme: theme === "light" ? "light" : "dark"}}
+                            />
+                        </div>
                     </div>
+                
                     <div className="card-body p-0">
                         <ResponsiveContainer
                             width="100%"
@@ -243,7 +340,7 @@ const DashboardPage = ({productData,orderData}) => {
                         <p className="card-title">Recent Sales</p>
                     </div>
                     <div className="card-body h-[300px] overflow-auto p-0">
-                        {recentSalesData.map((sale) => (
+                        {orderData.slice(0,20).map((sale) => (
                             <div
                                 key={sale.id}
                                 className="flex items-center justify-between gap-x-4 py-2 pr-2"

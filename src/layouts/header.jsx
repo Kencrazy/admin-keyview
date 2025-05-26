@@ -2,7 +2,7 @@ import { useTheme } from "@/hooks/use-theme";
 
 import { Bell, ChevronsLeft, Moon,Sun,ShoppingCart } from "lucide-react";
 
-import profileImg from "@/assets/profile-image.jpg";
+import profileImg from "@/assets/avatar.png";
 
 import PropTypes from "prop-types";
 import { useEffect, useState } from "react";
@@ -63,7 +63,7 @@ export const Header = ({ collapsed, setCollapsed }) => {
                 </button>
                 <button className="size-10 overflow-hidden rounded-full">
                     <img
-                        src={profile ? profile : profileImg}
+                        src={profile && profile}
                         alt="profile image"
                         className="size-full object-cover"
                     />
