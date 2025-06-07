@@ -1,12 +1,52 @@
 import React,{useEffect} from 'react'
-import { orderTime } from '../../constants';
 import { Megaphone,Star,Blocks,Target,PackagePlus } from 'lucide-react';
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis,PieChart,Pie,Cell,Legend } from "recharts";
 import { useTheme } from "@/hooks/use-theme";
 import { listOfIntegrations } from '../../constants';
 import CalendarLayout from '../../components/google_calendar';
 import { style } from 'framer-motion/client';
-function AnalyticsPage() {
+function AnalyticsPage({metaData,orderData}) {
+    const orderTime = [
+    { time: "08:00 AM - 10:00 AM", totalOrders: 0 },
+    { time: "10:00 AM - 12:00 PM", totalOrders: 0 },
+    { time: "12:00 PM - 02:00 PM", totalOrders: 0 },
+    { time: "02:00 PM - 04:00 PM", totalOrders: 0 },
+    { time: "04:00 PM - 06:00 PM", totalOrders: 0 },
+    { time: "06:00 PM - 08:00 PM", totalOrders: 0 },
+    { time: "08:00 PM - 10:00 PM", totalOrders: 0 },
+    { time: "10:00 PM - 12:00 AM", totalOrders: 0 },
+    ];
+
+    const timeStringToMinutes = (timeStr) => {
+    const [hourMin, period] = timeStr.split(" ");
+    let [hour, min] = hourMin.split(":").map(Number);
+    if (period === "PM" && hour !== 12) hour += 12;
+    if (period === "AM" && hour === 12) hour = 0;
+    return hour * 60 + min;
+    };
+
+    orderData.forEach(order => {
+        const date = new Date(order.orderedDate);
+        const minutes = date.getHours() * 60 + date.getMinutes();
+
+        for (let slot of orderTime) {
+            const [startStr, endStr] = slot.time.split(" - ");
+            const startMin = timeStringToMinutes(startStr);
+            const endMin = timeStringToMinutes(endStr);
+
+            if (startMin > endMin) {
+            if (minutes >= startMin || minutes < endMin) {
+                slot.totalOrders++;
+                break;
+            }
+            } else {
+            if (minutes >= startMin && minutes < endMin) {
+                slot.totalOrders++;
+                break;
+            }
+            }
+        }
+    });
     
     const { theme } = useTheme();
     const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
@@ -16,95 +56,95 @@ function AnalyticsPage() {
             'https://code.highcharts.com/mapdata/countries/vn/vn-all.topo.json'
         ).then(response => response.json());
     
-        /**
-         * Array of region data for Vietnam.
-         * Each entry is a tuple where the first element is a region code (string)
-         * and the second element is a numeric value (number).
-         *
-         * Region codes mapping:
-         * - 'vn-3655': Hà Nội
-         * - 'vn-qn': Quảng Ninh
-         * - 'vn-kh': Khánh Hòa
-         * - 'vn-tg': Tiền Giang
-         * - 'vn-bv': Bà Rịa - Vũng Tàu
-         * - 'vn-bu': Bình Dương
-         * - 'vn-hc': Hồ Chí Minh
-         * - 'vn-br': Bà Rịa - Vũng Tàu
-         * - 'vn-st': Sóc Trăng
-         * - 'vn-pt': Phan Thiết (Bình Thuận)
-         * - 'vn-yb': Yên Bái
-         * - 'vn-hd': Hải Dương
-         * - 'vn-bn': Bắc Ninh
-         * - 'vn-317': Hải Phòng
-         * - 'vn-nb': Ninh Bình
-         * - 'vn-hm': Hà Nam
-         * - 'vn-ho': Hòa Bình
-         * - 'vn-vc': Vĩnh Phúc
-         * - 'vn-318': Nam Định
-         * - 'vn-bg': Bắc Giang
-         * - 'vn-tb': Thái Bình
-         * - 'vn-ld': Lâm Đồng
-         * - 'vn-bp': Bình Phước
-         * - 'vn-py': Phú Yên
-         * - 'vn-bd': Bình Định
-         * - 'vn-724': Tây Ninh
-         * - 'vn-qg': Quảng Ngãi
-         * - 'vn-331': Cần Thơ
-         * - 'vn-dt': Đồng Tháp
-         * - 'vn-la': Long An
-         * - 'vn-3623': Đắk Lắk
-         * - 'vn-337': Đà Nẵng
-         * - 'vn-bl': Bạc Liêu
-         * - 'vn-vl': Vĩnh Long
-         * - 'vn-tn': Thái Nguyên
-         * - 'vn-ty': Tuyên Quang
-         * - 'vn-li': Lai Châu
-         * - 'vn-311': Bắc Kạn
-         * - 'vn-hg': Hà Giang
-         * - 'vn-nd': Nam Định
-         * - 'vn-328': Quảng Bình
-         * - 'vn-na': Nghệ An
-         * - 'vn-qb': Quảng Bình
-         * - 'vn-723': Bình Thuận
-         * - 'vn-nt': Ninh Thuận
-         * - 'vn-6365': Đắk Nông
-         * - 'vn-299': Kiên Giang
-         * - 'vn-300': Cà Mau
-         * - 'vn-qt': Quảng Trị
-         * - 'vn-tt': Thừa Thiên Huế
-         * - 'vn-da': Đà Nẵng
-         * - 'vn-ag': An Giang
-         * - 'vn-cm': Cà Mau
-         * - 'vn-tv': Trà Vinh
-         * - 'vn-cb': Cao Bằng
-         * - 'vn-kg': Kiên Giang
-         * - 'vn-lo': Lào Cai
-         * - 'vn-db': Điện Biên
-         * - 'vn-ls': Lạng Sơn
-         * - 'vn-th': Thanh Hóa
-         * - 'vn-307': Quảng Nam
-         * - 'vn-tq': Tuyên Quang
-         * - 'vn-bi': Biên Hòa (Đồng Nai)
-         * - 'vn-333': Hậu Giang
-         */
-        const data = [
-            ['vn-3655', 10], ['vn-qn', 11], ['vn-kh', 12], ['vn-tg', 13],
-            ['vn-bv', 14], ['vn-bu', 15], ['vn-hc', 16], ['vn-br', 17],
-            ['vn-st', 18], ['vn-pt', 19], ['vn-yb', 20], ['vn-hd', 21],
-            ['vn-bn', 22], ['vn-317', 23], ['vn-nb', 24], ['vn-hm', 25],
-            ['vn-ho', 26], ['vn-vc', 27], ['vn-318', 28], ['vn-bg', 29],
-            ['vn-tb', 30], ['vn-ld', 31], ['vn-bp', 32], ['vn-py', 33],
-            ['vn-bd', 34], ['vn-724', 35], ['vn-qg', 36], ['vn-331', 37],
-            ['vn-dt', 38], ['vn-la', 39], ['vn-3623', 40], ['vn-337', 41],
-            ['vn-bl', 42], ['vn-vl', 43], ['vn-tn', 44], ['vn-ty', 45],
-            ['vn-li', 46], ['vn-311', 47], ['vn-hg', 48], ['vn-nd', 49],
-            ['vn-328', 50], ['vn-na', 51], ['vn-qb', 52], ['vn-723', 53],
-            ['vn-nt', 54], ['vn-6365', 55], ['vn-299', 56], ['vn-300', 57],
-            ['vn-qt', 58], ['vn-tt', 59], ['vn-da', 60], ['vn-ag', 61],
-            ['vn-cm', 62], ['vn-tv', 63], ['vn-cb', 64], ['vn-kg', 65],
-            ['vn-lo', 66], ['vn-db', 67], ['vn-ls', 68], ['vn-th', 69],
-            ['vn-307', 70], ['vn-tq', 71], ['vn-bi', 72], ['vn-333', 73]
-        ];
+    const regionCodeMap = {
+    'vn-3655': 'Hà Nội',
+    'vn-qn': 'Quảng Ninh',
+    'vn-kh': 'Khánh Hòa',
+    'vn-tg': 'Tiền Giang',
+    'vn-bv': 'Bà Rịa - Vũng Tàu',
+    'vn-bu': 'Bình Dương',
+    'vn-hc': 'Hồ Chí Minh',
+    'vn-br': 'Bà Rịa - Vũng Tàu',
+    'vn-st': 'Sóc Trăng',
+    'vn-pt': 'Bình Thuận',
+    'vn-yb': 'Yên Bái',
+    'vn-hd': 'Hải Dương',
+    'vn-bn': 'Bắc Ninh',
+    'vn-317': 'Hải Phòng',
+    'vn-nb': 'Ninh Bình',
+    'vn-hm': 'Hà Nam',
+    'vn-ho': 'Hòa Bình',
+    'vn-vc': 'Vĩnh Phúc',
+    'vn-318': 'Nam Định',
+    'vn-bg': 'Bắc Giang',
+    'vn-tb': 'Thái Bình',
+    'vn-ld': 'Lâm Đồng',
+    'vn-bp': 'Bình Phước',
+    'vn-py': 'Phú Yên',
+    'vn-bd': 'Bình Định',
+    'vn-724': 'Tây Ninh',
+    'vn-qg': 'Quảng Ngãi',
+    'vn-331': 'Cần Thơ',
+    'vn-dt': 'Đồng Tháp',
+    'vn-la': 'Long An',
+    'vn-3623': 'Đắk Lắk',
+    'vn-337': 'Đà Nẵng',
+    'vn-bl': 'Bạc Liêu',
+    'vn-vl': 'Vĩnh Long',
+    'vn-tn': 'Thái Nguyên',
+    'vn-ty': 'Tuyên Quang',
+    'vn-li': 'Lai Châu',
+    'vn-311': 'Bắc Kạn',
+    'vn-hg': 'Hà Giang',
+    'vn-nd': 'Nam Định',
+    'vn-328': 'Quảng Bình',
+    'vn-na': 'Nghệ An',
+    'vn-qb': 'Quảng Bình',
+    'vn-723': 'Bình Thuận',
+    'vn-nt': 'Ninh Thuận',
+    'vn-6365': 'Đắk Nông',
+    'vn-299': 'Kiên Giang',
+    'vn-300': 'Cà Mau',
+    'vn-qt': 'Quảng Trị',
+    'vn-tt': 'Thừa Thiên Huế',
+    'vn-da': 'Đà Nẵng',
+    'vn-ag': 'An Giang',
+    'vn-cm': 'Cà Mau',
+    'vn-tv': 'Trà Vinh',
+    'vn-cb': 'Cao Bằng',
+    'vn-kg': 'Kiên Giang',
+    'vn-lo': 'Lào Cai',
+    'vn-db': 'Điện Biên',
+    'vn-ls': 'Lạng Sơn',
+    'vn-th': 'Thanh Hóa',
+    'vn-307': 'Quảng Nam',
+    'vn-tq': 'Tuyên Quang',
+    'vn-bi': 'Đồng Nai',
+    'vn-333': 'Hậu Giang',
+    };
+
+    const provinceToCode = {};
+    for (const [code, province] of Object.entries(regionCodeMap)) {
+        provinceToCode[province.toLowerCase()] = code;
+    }
+
+    const regionCount = {};
+    for (const code of Object.keys(regionCodeMap)) {
+        regionCount[code] = 0;
+        }
+
+        orderData.forEach(order => {
+        const address = order.address.toLowerCase();
+
+        for (const [province, code] of Object.entries(provinceToCode)) {
+            if (address.includes(province)) {
+            regionCount[code]++;
+            break;
+            }
+        }
+    });
+
+    const mapData = Object.entries(regionCount)
     
         Highcharts.mapChart('vietnam_container', {
             chart: {
@@ -127,22 +167,17 @@ function AnalyticsPage() {
             },
         
             colorAxis: {
-            min: 0, //Change later
+                min: 0,
             },
         
             series: [{
-            data: data,
+            data: mapData,
             name: 'Orders Location',
             states: {
                 hover: {
                 color: '#BADA55'
                 }
             },
-            // legend:{
-            //     style:{
-            //         color: theme === "light" ? "#0F172A" : "#ffffff"
-            //     }
-            // },
             dataLabels: {
                 enabled: true,
                 format: '{point.name}'
@@ -151,11 +186,6 @@ function AnalyticsPage() {
         });
     
     })();
-    const data = [
-        { name: 'Website', value: 400 },
-        { name: 'Mobile', value: 300 },
-        { name: 'Others', value: 300 }
-      ];
     return (
         <div className="flex flex-col gap-y-4">
             <h1 className="title">Analytics</h1>
@@ -207,7 +237,7 @@ function AnalyticsPage() {
                                 </defs>
                                 <Tooltip
                                     cursor={false}
-                                    formatter={(value) => `$${value}`}
+                                    formatter={(value) => `${value}`}
                                 />
 
                                 <XAxis
@@ -237,112 +267,6 @@ function AnalyticsPage() {
                 </div>
             </div>
 
-            <div className='grid grid-cols-1 md:grid-cols-2 gap-4 lg:grid-cols-7'>
-                <div className="card col-span-1 md:col-span-2 lg:col-span-4">
-                    <div className="card-header justify-between">
-                        <div className='flex flex-row items-center gap-2'>                        
-                            <div className="w-fit rounded-lg bg-blue-500/20 p-2 text-blue-500 transition-colors dark:bg-blue-600/20 dark:text-blue-600">
-                                <Blocks size={26}/>
-                            </div>
-                            <p className='card-title'>List of Integrations</p>
-                        </div>
-
-                        <div className="w-fit rounded-lg bg-blue-500/20 p-2 hover:opacity-50 cursor-pointer text-blue-500 transition-colors dark:bg-blue-600/20 dark:text-blue-600">
-                            <PackagePlus size={26}/>
-                        </div>
-                    </div>
-
-                    <div className="card-body p-0">
-                        <div className="relative h-[400px] w-full flex-shrink-0 overflow-auto rounded-none [scrollbar-width:_thin]">
-                            <table className="table">
-                                <thead className="table-header">
-                                    <tr className="table-row">
-                                        <th className="table-head">#</th>
-                                        <th className="table-head">Shop Name</th>
-                                        <th className="table-head">Total Sales</th>
-                                        <th className="table-head">Sales</th>
-                                        <th className="table-head">Rating</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="table-body">
-                                    {listOfIntegrations.map((shop) => (
-                                        <tr
-                                            key={shop.number}
-                                            className="table-row"
-                                        >
-                                            <td className="table-cell">{shop.number}</td>
-                                            <td className="table-cell">
-                                                <div className="flex w-max gap-x-4">
-                                                    <img
-                                                        src={shop.image}
-                                                        alt={shop.name}
-                                                        className="size-14 rounded-lg object-cover"
-                                                    />
-                                                    <div className="flex flex-col">
-                                                        <p>{shop.name}</p>
-                                                        <p className="font-normal text-slate-600 dark:text-slate-400">{shop.description}</p>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="table-cell">{shop.totalSales}</td>
-                                            <td className="table-cell">${shop.sales}</td>
-                                            <td className="table-cell">
-                                                <div className="flex items-center gap-x-2">
-                                                    <Star
-                                                        size={18}
-                                                        className="fill-yellow-600 stroke-yellow-600"
-                                                    />
-                                                    {shop.rating}
-                                                </div>
-                                            </td>
-                                            {/* <td className="table-cell">
-                                                <div className="flex items-center gap-x-4">
-                                                    <button className="text-blue-500 dark:text-blue-600">
-                                                        <PencilLine size={20} />
-                                                    </button>
-                                                    <button className="text-red-500">
-                                                        <Trash size={20} />
-                                                    </button>
-                                                </div>
-                                            </td> */}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <div className='card col-span-1 md:col-span-2 lg:col-span-3'>
-                    <div className='card-header'>
-                        <div className="w-fit rounded-lg bg-blue-500/20 p-2 text-blue-500 transition-colors dark:bg-blue-600/20 dark:text-blue-600">
-                            <Target size={26}/>
-                        </div>
-                        <p className='card-title'>Sales Overview</p>
-                    </div>
-                    <div className='card-body p-0'>
-                        <ResponsiveContainer width="100%" height={400}>
-                            <PieChart>
-                                <Pie 
-                                    data={data}
-                                    innerRadius={100}
-                                    outerRadius={160}
-                                    fill="#8884d8"
-                                    paddingAngle={5}
-                                    dataKey="value"
-                                    label
-                                >
-                                    {data.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Pie>
-                                <Legend />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-            </div>
-            
             <div className='card lg:flex hidden'>
                 <CalendarLayout/>
             </div>

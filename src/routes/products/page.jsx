@@ -1,13 +1,12 @@
 import React,{useState} from "react";
-import {topProducts} from "@/constants"
 import { Star,PencilLine,Trash } from "lucide-react";
 import SearchbarAndFilters from "../../components/filter";
-export default function ProductsPage() {
+export default function ProductsPage({productData}) {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
 
-  const filteredProducts = topProducts.filter((product) => {
+  const filteredProducts = productData.filter((product) => {
     const query = searchQuery.toLowerCase();
     return (
       product.name.toLowerCase().includes(query) ||

@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import SearchbarAndFilters from '../../components/filter';
-import { recentOrders } from '../../constants';
 
-export default function ReportPage() {
+export default function ReportPage({orderData}) {
   const itemsPerPage = 20;
   const [page, setPage] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
@@ -10,9 +9,9 @@ export default function ReportPage() {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
 
-  const statusOptions = Array.from(new Set(recentOrders.map(o => o.status)));
+  const statusOptions = Array.from(new Set(orderData.map(o => o.status)));
 
-  const filteredOrders = recentOrders.filter(order => {
+  const filteredOrders = orderData.filter(order => {
     const query = searchQuery.toLowerCase();
     const matchSearch =
       order.orderId.toLowerCase().includes(query) ||

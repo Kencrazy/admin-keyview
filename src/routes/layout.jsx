@@ -40,12 +40,10 @@ const Layout = () => {
                 if (userMetadata) {
                     const userData = {
                         storeName: userMetadata.storeName,
-                        avatar: userMetadata.avatar,
                         email: userMetadata.email,
-                        name: userMetadata.name,
                         shopIcon: userMetadata.shopIcon,
                         due: userMetadata.due,
-                        plan: userMetadata.plan
+                        plan: userMetadata.plan,
                     };
                     localStorage.setItem("userData", JSON.stringify(userData));
                 }

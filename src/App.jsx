@@ -34,7 +34,6 @@ function App() {
                 setUserID(null);
             }
         };
-
         fetchData();
     }, [userId]);
 
@@ -53,23 +52,23 @@ function App() {
                 },
                 {
                     path: "analytics",
-                    element: <AnalyticsPage />,
+                    element: <AnalyticsPage metaData={metaData} orderData={orders} />,
                 },
                 {
                     path: "reports",
-                    element: <ReportPage />,
+                    element: <ReportPage orderData={orders} />,
                 },
                 {
                     path: "customers",
-                    element: <Customer />,
+                    element: <Customer orderData={orders} />,
                 },
                 {
                     path: "products",
-                    element: <ProductsPage />,
+                    element: <ProductsPage productData={products} />,
                 },
                 {
                     path: "settings",
-                    element: <SettingsPage />,
+                    element: <SettingsPage metaData={metaData} setMetaData={setMetaData} />,
                 },
             ],
         },

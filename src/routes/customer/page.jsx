@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { recentOrders } from '../../constants';
 import SearchbarAndFilters from '../../components/filter';
 
-export default function Customer() {
+export default function Customer({orderData}) {
   const customerMap = {};
   const [searchQuery, setSearchQuery] = useState('');
 
-  for (const order of recentOrders) {
+  for (const order of orderData) {
     const name = order.customerName;
     if (!customerMap[name]) {
       customerMap[name] = {
