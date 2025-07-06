@@ -64,7 +64,7 @@ function App() {
                 },
                 {
                     path: "products",
-                    element: <ProductsPage productData={products} />,
+                    element: <ProductsPage productData={products} setProductData={setProducts} metaData={metaData} setMetaData={setMetaData}/>,
                 },
                 {
                     path: "settings",

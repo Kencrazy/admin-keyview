@@ -9,7 +9,7 @@ const monthNames = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
-export default function DemoWrapper() {
+export default function DemoWrapper({event}) {
   const { createSnack } = useSnack();
 
   const onClickHandler = (day, month, year) => {
@@ -17,10 +17,15 @@ export default function DemoWrapper() {
     createSnack(snackMessage, 'success');
   };
 
+  const limitPlan = ()=>{
+    const snackMessage = 'Exceeding limit 50 events'
+    createSnack(snackMessage,'error')
+  }
+
   return (
     <div className="relative hidden  lg:flex h-screen max-h-screen w-full flex-col gap-4 px-4 items-center justify-center">
       <div className="relative h-full overflow-auto">
-        <ContinuousCalendar onClick={onClickHandler} />
+        <ContinuousCalendar onClick={onClickHandler} limitPlan={limitPlan} event={event}/>
       </div>
     </div>
   );

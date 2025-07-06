@@ -186,6 +186,7 @@ function AnalyticsPage({metaData,orderData}) {
         });
     
     })();
+
     return (
         <div className="flex flex-col gap-y-4">
             <h1 className="title">Analytics</h1>
@@ -268,7 +269,7 @@ function AnalyticsPage({metaData,orderData}) {
             </div>
 
             <div className='card lg:flex hidden'>
-                <CalendarLayout/>
+                <CalendarLayout event={metaData.event ? metaData.event : {}}/>
             </div>
         </div>
     )

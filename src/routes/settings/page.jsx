@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { handleSignOut, handlePasswordReset } from "../../service/authReader";
 import { updateData, updateImageToFirebase } from "../../service/updateFirebase";
@@ -21,6 +21,28 @@ export default function SettingsPage({ metaData, setMetaData }) {
   const [isBannerConfirmed, setIsBannerConfirmed] = useState(false);
   const [bannerError, setBannerError] = useState(null);
   const [bannerIndexToChange, setBannerIndexToChange] = useState(null);
+  const [localBanners, setLocalBanners] = useState(banners);
+  const [dragIndex, setDragIndex] = useState(null);
+  const [hasBannerOrderChanged, setHasBannerOrderChanged] = useState(false);
+
+  // Sync localBanners with metaData.banners when metaData changes
+  useEffect(() => {
+    setLocalBanners(banners);
+  }, [banners]);
+
+  // Handle visibilitychange to update banner order if changed
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden" && hasBannerOrderChanged) {
+        updateBannerOrder();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [hasBannerOrderChanged, localBanners]);
 
   const toggleStoreNameInput = () => {
     setIsStoreNameInputOpen(!isStoreNameInputOpen);
@@ -77,7 +99,7 @@ export default function SettingsPage({ metaData, setMetaData }) {
       return;
     }
     try {
-      const downloadURL = await updateImageToFirebase(selectedIconFile, "shopIcon.jpg","","");
+      const downloadURL = await updateImageToFirebase(selectedIconFile, "shopIcon.jpg", "", "");
       await updateData("", { shopIcon: downloadURL });
       setMetaData((prev) => ({ ...prev, shopIcon: downloadURL }));
       setIsIconInputOpen(false);
@@ -119,8 +141,8 @@ export default function SettingsPage({ metaData, setMetaData }) {
     }
     try {
       const timestamp = Date.now();
-      const downloadURL = await updateImageToFirebase(selectedBannerFile, `banner_${timestamp}.jpg`,"","");
-      let updatedBanners = [...banners];
+      const downloadURL = await updateImageToFirebase(selectedBannerFile, `banner_${timestamp}.jpg`, "", "");
+      let updatedBanners = [...localBanners];
 
       if (bannerIndexToChange !== null) {
         const oldBannerURL = updatedBanners[bannerIndexToChange];
@@ -129,16 +151,18 @@ export default function SettingsPage({ metaData, setMetaData }) {
         await deleteObject(oldBannerRef).catch((e) => console.warn("Failed to delete old banner:", e));
         updatedBanners[bannerIndexToChange] = downloadURL;
       } else {
-        updatedBanners = [...banners, downloadURL];
+        updatedBanners = [...updatedBanners, downloadURL];
       }
 
       await updateData("", { banners: updatedBanners });
       setMetaData((prev) => ({ ...prev, banners: updatedBanners }));
+      setLocalBanners(updatedBanners);
       setIsBannerInputOpen(false);
       setBannerError(null);
       setIsBannerConfirmed(false);
       setSelectedBannerFile(null);
       setBannerIndexToChange(null);
+      setHasBannerOrderChanged(false);
     } catch (e) {
       setBannerError("Failed to add or update banner. Please try again.");
     }
@@ -146,16 +170,49 @@ export default function SettingsPage({ metaData, setMetaData }) {
 
   const deleteBanner = async (index) => {
     try {
-      const bannerURL = banners[index];
+      const bannerURL = localBanners[index];
       const bannerPath = decodeURIComponent(bannerURL.split("/o/")[1].split("?")[0]);
       const bannerRef = ref(storage, bannerPath);
       await deleteObject(bannerRef).catch((e) => console.warn("Failed to delete banner from storage:", e));
 
-      const updatedBanners = banners.filter((_, i) => i !== index);
+      const updatedBanners = localBanners.filter((_, i) => i !== index);
       await updateData("", { banners: updatedBanners });
       setMetaData((prev) => ({ ...prev, banners: updatedBanners }));
+      setLocalBanners(updatedBanners);
+      setHasBannerOrderChanged(false);
     } catch (e) {
       setBannerError("Failed to delete banner. Please try again.");
+    }
+  };
+
+  const handleDragStart = (e, index) => {
+    setDragIndex(index);
+    e.dataTransfer.setData("text/plain", index);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e, dropIndex) => {
+    e.preventDefault();
+    const dragIndex = Number(e.dataTransfer.getData("text/plain"));
+    if (dragIndex === dropIndex) return;
+
+    const updatedBanners = [...localBanners];
+    const [draggedBanner] = updatedBanners.splice(dragIndex, 1);
+    updatedBanners.splice(dropIndex, 0, draggedBanner);
+    setLocalBanners(updatedBanners);
+    setHasBannerOrderChanged(true);
+  };
+
+  const updateBannerOrder = async () => {
+    try {
+      await updateData("", { banners: localBanners });
+      setMetaData((prev) => ({ ...prev, banners: localBanners }));
+      setHasBannerOrderChanged(false);
+    } catch (e) {
+      setBannerError("Failed to update banner order. Please try again.");
     }
   };
 
@@ -215,15 +272,24 @@ export default function SettingsPage({ metaData, setMetaData }) {
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Upload banners to showcase your store. Recommended size: 1280x720px. Only PNG or JPG files are supported.
             </p>
-            {banners.length > 0 && (
+            {localBanners.length > 0 && (
               <div className="flex space-x-2 mt-2 overflow-x-auto">
-                {banners.map((banner, index) => (
-                  <div key={index} className="relative">
+                {localBanners.map((banner, index) => (
+                  <div
+                    key={index}
+                    className="relative"
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, index)}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, index)}
+                  >
                     <img
                       src={banner}
                       alt={`Banner ${index + 1}`}
-                      className="w-24 h-16 object-cover rounded"
+                      className="w-24 h-16 object-cover rounded cursor-move"
                     />
+                   
+
                     <button
                       onClick={() => deleteBanner(index)}
                       className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
