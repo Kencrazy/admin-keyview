@@ -12,6 +12,8 @@ import SettingsPage from "./routes/settings/page";
 import LoginPage from "./routes/login/page";
 import ForgotPasswordPage from "./routes/forgot/page";
 
+import BlockAction from "./routes/Block";
+
 import { handleGetData } from "./service/readFirebase";
 
 function App() {
@@ -20,7 +22,11 @@ function App() {
     const [products, setProducts] = useState([])
     const [orders, setOrders] = useState([])
     const [settings, setSettings] = useState({})
+    const [events,setEvents]=useState({})
+    const [checkDate,setCheckDate]=useState(false)
     const userId = localStorage.getItem("userId");
+    const [display,setDisplay]=useState(false)
+
     useEffect(() => {
         const fetchData = async () => {
             if (userId) {
@@ -30,6 +36,7 @@ function App() {
                 setProducts(data?.products ?? []);
                 setOrders(data?.orders ?? []);
                 setSettings(data?.settings ?? []);
+                setEvents(data?.user?.event ?? {});
             } else {
                 setUserID(null);
             }
@@ -44,15 +51,19 @@ function App() {
         },
         {
             path: "/",
-            element: <Layout />,
-            children: [
+            element: <Layout setCheckDate={setCheckDate} checkDate={checkDate} display={display} metaData={metaData} setMetaData={setMetaData} setDisplay={setDisplay} />,
+            children: 
+            checkDate ? [
+                {index:true,element: <BlockAction checkDate={checkDate} setCheckDate={setCheckDate} setDisplay={setDisplay}/>}
+            ] :
+            [
                 {
                     index: true,
                     element: <DashboardPage productData={products} orderData={orders} />,
                 },
                 {
                     path: "analytics",
-                    element: <AnalyticsPage metaData={metaData} orderData={orders} />,
+                    element: <AnalyticsPage event={events} setEvents={setEvents} orderData={orders} />,
                 },
                 {
                     path: "reports",

@@ -12,6 +12,8 @@ import React,{useState,useMemo,useEffect} from "react";
 
 import { generateOverviewData } from "../../service/interactiveCode";
 
+import cleanQuillHtml from "../../utils/cleanQuillHtml";
+
 const DashboardPage = ({productData,orderData}) => {
     const [fromDate, setFromDate] = useState('');
     const [toDate, setToDate] = useState('');
@@ -394,11 +396,11 @@ const DashboardPage = ({productData,orderData}) => {
                                                 />
                                                 <div className="flex flex-col">
                                                     <p>{product.name}</p>
-                                                    <p className="font-normal text-slate-600 dark:text-slate-400">{product.description}</p>
+                                                    <p className="font-normal text-slate-600 dark:text-slate-400" dangerouslySetInnerHTML={{__html:product.description}}></p>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="table-cell">${product.price}</td>
+                                        <td className="table-cell">{product.price}</td>
                                         <td className="table-cell">{product.status}</td>
                                         <td className="table-cell">
                                             <div className="flex items-center gap-x-2">

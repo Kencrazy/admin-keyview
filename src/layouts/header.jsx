@@ -1,18 +1,18 @@
 import { useTheme } from "@/hooks/use-theme";
-
 import { Bell, ChevronsLeft, Moon,Sun,ShoppingCart } from "lucide-react";
-
 import profileImg from "@/assets/avatar.png";
-
 import PropTypes from "prop-types";
 import { useEffect, useState } from "react";
 import Plan from "../components/payup";
 import { readImageFirebase } from "../service/readFirebase";
 
-export const Header = ({ collapsed, setCollapsed }) => {
+export const Header = ({ collapsed, setCollapsed,setCheckDate,display,setDisplay,metaData,setMetaData }) => {
     const userData = JSON.parse(localStorage.getItem("userData")) || {};
     const [profile, setProfileImg] = useState(profileImg);
-    const { avatar,due,plan } = userData;
+    const { avatar } = userData;
+    
+    const remainingDays = metaData?.due && metaData?.plan ? Math.max(0, Math.ceil((new Date(metaData.due) - new Date()) / (1000 * 60 * 60 * 24))) : null;
+
     useEffect(() => {
         const fetchImage = async () => {
             if (avatar) {
@@ -23,10 +23,16 @@ export const Header = ({ collapsed, setCollapsed }) => {
         fetchImage();
     }
     , [avatar]);
-    const { theme, setTheme } = useTheme();
-    const [display,setDisplay]=useState(false)
 
-    const remainingDays = due && plan ? Math.max(0, Math.ceil((new Date(due) - new Date()) / (1000 * 60 * 60 * 24))) : null;
+    useEffect(()=>{
+         if(remainingDays===0){
+            setCheckDate(true)
+        } else{
+            setCheckDate(false)
+        }
+    },[metaData,setMetaData])
+    const { theme, setTheme } = useTheme();
+
 
     return (
         <header className="relative z-10 flex h-[60px] items-center justify-between bg-white px-4 shadow-md transition-colors dark:bg-slate-900">
@@ -72,7 +78,7 @@ export const Header = ({ collapsed, setCollapsed }) => {
 
             {/* Pop up pay up */}
             {display && (
-                <Plan />
+                <Plan metaData={metaData} setMetaData={setMetaData} setCheckDate={setCheckDate} />
             )}
         </header>
     );

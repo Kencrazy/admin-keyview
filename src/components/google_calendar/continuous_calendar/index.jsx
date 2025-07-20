@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useTheme } from "@/hooks/use-theme";
 import { updateData } from '../../../service/updateFirebase';
 
 const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -8,12 +7,11 @@ const monthNames = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-export const ContinuousCalendar = ({ onClick, limitPlan, event }) => {
+export const ContinuousCalendar = ({ onClick, limitPlan, events,setEvents }) => {
   const today = new Date();
   const dayRefs = useRef([]);
   const [year, setYear] = useState(today.getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState(0);
-  const [events, setEvents] = useState(event || {}); // Initialize with event prop or empty object
+  const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
   const [selectedDate, setSelectedDate] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newEventTitle, setNewEventTitle] = useState('');
@@ -23,28 +21,35 @@ export const ContinuousCalendar = ({ onClick, limitPlan, event }) => {
 
   // Sync events with event prop
   useEffect(() => {
-    setEvents(event || {});
-  }, [event]);
+    setEvents(events || {});
+  }, [events]);
 
-  // Handle visibilitychange
+  // Sync events to Firebase whenever events change and eventChange is true
   useEffect(() => {
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible' && eventChange) {
+    const syncEvents = async () => {
+      if (eventChange) {
         try {
           await updateData("", { event: events }, "");
-          setEventChange(false); // Reset after sync
+          setEventChange(false);
         } catch (error) {
           console.error("Failed to sync events:", error);
         }
       }
     };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
+    syncEvents();
   }, [events, eventChange]);
+
+  // Warn before leaving with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (eventChange) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [eventChange]);
 
   // IntersectionObserver for month selection
   useEffect(() => {
@@ -66,7 +71,7 @@ export const ContinuousCalendar = ({ onClick, limitPlan, event }) => {
     });
 
     return () => observer.disconnect();
-  }, []); // No dependencies needed since dayRefs and container are stable
+  }, []);
 
   const monthOptions = monthNames.map((name, index) => ({ name, value: `${index}` }));
 
@@ -113,38 +118,41 @@ export const ContinuousCalendar = ({ onClick, limitPlan, event }) => {
     onClick(day, month, y);
   };
 
-  const handleEventDragStart = (event, date) => {
-    event.dataTransfer.setData('text/plain', JSON.stringify({ title: event.target.innerText, date }));
+  const handleEventDragStart = (e, date, content) => {
+    e.dataTransfer.setData('text/plain', JSON.stringify({ content, date }));
   };
 
-  const handleEventDrop = (day, month, y) => {
-    const eventData = JSON.parse(event.dataTransfer.getData('text/plain'));
+  const handleEventDrop = (e, day, month, y) => {
+    e.preventDefault();
+    const eventData = JSON.parse(e.dataTransfer.getData('text/plain'));
     const newDate = `${y}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
     setEvents((prev) => {
       const updatedEvents = { ...prev };
       const existingEvents = updatedEvents[eventData.date] || [];
-      const updatedEventList = existingEvents.filter(event => event.title !== eventData.title);
+      const updatedEventList = existingEvents.filter(event => event.content !== eventData.content);
 
-      updatedEvents[eventData.date] = updatedEventList;
-      updatedEvents[newDate] = [...(updatedEvents[newDate] || []), { title: eventData.title }];
+      updatedEvents[eventData.date] = updatedEventList.length > 0 ? updatedEventList : [];
+      updatedEvents[newDate] = [...(updatedEvents[newDate] || []), { content: eventData.content }];
 
       return updatedEvents;
     });
-    setEventChange(true); // Mark change for sync
+    setEventChange(true);
   };
 
-  const handleEventDoubleClick = (title, date) => {
-    setEventToDelete({ title, date });
+  const handleEventDoubleClick = (content, date) => {
+    setEventToDelete({ content, date });
     setIsDeleteModalOpen(true);
-    setEventChange(true);
   };
 
   const handleDeleteEvent = () => {
     setEvents((prev) => {
       const updatedEvents = { ...prev };
       const eventList = updatedEvents[eventToDelete.date] || [];
-      updatedEvents[eventToDelete.date] = eventList.filter(event => event.title !== eventToDelete.title);
+      updatedEvents[eventToDelete.date] = eventList.filter(event => event.content !== eventToDelete.content);
+      if (updatedEvents[eventToDelete.date].length === 0) {
+        delete updatedEvents[eventToDelete.date];
+      }
       return updatedEvents;
     });
     setIsDeleteModalOpen(false);
@@ -160,7 +168,7 @@ export const ContinuousCalendar = ({ onClick, limitPlan, event }) => {
       // Filler days for previous year
       if (startDayOfWeek > 0) {
         const prevYear = year - 1;
-        const prevMonthDays = new Date(year, 0, 0).getDate(); // Days in Dec of prev year
+        const prevMonthDays = new Date(year, 0, 0).getDate();
         for (let i = startDayOfWeek; i > 0; i--) {
           result.push({ month: -1, day: prevMonthDays - i + 1, year: prevYear });
         }
@@ -199,8 +207,6 @@ export const ContinuousCalendar = ({ onClick, limitPlan, event }) => {
           const index = wIdx * 7 + dIdx;
           const isToday = today.getFullYear() === dayYear && today.getMonth() === month && today.getDate() === day;
           const isNewMonth = index === 0 || calendarDays[index - 1].month !== month;
-
-          // Skip rendering events for filler days
           const dateKey = month >= 0 ? `${dayYear}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}` : null;
 
           return (
@@ -211,7 +217,7 @@ export const ContinuousCalendar = ({ onClick, limitPlan, event }) => {
               data-day={day}
               onClick={() => handleDayClick(day, month, dayYear)}
               onDragOver={(e) => e.preventDefault()}
-              onDrop={() => handleEventDrop(day, month, dayYear)}
+              onDrop={(e) => handleEventDrop(e, day, month, dayYear)}
               className={`relative z-10 m-[-0.5px] group aspect-square w-full grow cursor-pointer rounded-xl border font-medium transition-all hover:z-20 hover:border-cyan-400 sm:-m-px sm:size-20 sm:rounded-2xl sm:border-2 lg:size-36 lg:rounded-3xl 2xl:size-40`}
             >
               <span className={`absolute left-1 top-1 flex size-5 items-center justify-center rounded-full text-xs sm:size-6 sm:text-sm lg:left-2 lg:top-2 lg:size-8 lg:text-base ${isToday ? 'bg-blue-500 font-semibold text-white' : ''} ${month < 0 ? 'text-slate-400' : 'text-slate-800 dark:text-white'}`}>
@@ -221,12 +227,12 @@ export const ContinuousCalendar = ({ onClick, limitPlan, event }) => {
                 {dateKey && events && events[dateKey]?.map((event, idx) => (
                   <div
                     key={idx}
-                    onDragStart={(e) => handleEventDragStart(e, dateKey)}
-                    onDoubleClick={() => handleEventDoubleClick(event.title, dateKey)}
+                    onDragStart={(e) => handleEventDragStart(e, dateKey, event.content)}
+                    onDoubleClick={() => handleEventDoubleClick(event.content, dateKey)}
                     draggable
                     className="mb-2 last:mb-0 px-1 text-xs truncate whitespace-break-spaces text-blue-600 dark:text-white bg-blue-600/30 p-1 text-center rounded-lg"
                   >
-                    {event.title}
+                    {event.content}
                   </div>
                 ))}
               </div>
@@ -255,7 +261,7 @@ export const ContinuousCalendar = ({ onClick, limitPlan, event }) => {
       return;
     }
 
-    setIsModalOpen(true); 
+    setIsModalOpen(true);
   };
 
   return (
@@ -317,7 +323,7 @@ export const ContinuousCalendar = ({ onClick, limitPlan, event }) => {
                   if (!newEventTitle) return;
                   setEvents((prev) => ({
                     ...prev,
-                    [selectedDate]: [...(prev[selectedDate] || []), { title: newEventTitle }],
+                    [selectedDate]: [...(prev[selectedDate] || []), { content: newEventTitle }],
                   }));
                   setNewEventTitle('');
                   setIsModalOpen(false);
@@ -336,7 +342,7 @@ export const ContinuousCalendar = ({ onClick, limitPlan, event }) => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="card p-6 w-96">
             <h2 className="text-lg font-semibold">Confirm Delete Event</h2>
-            <p>Are you sure you want to delete the event "{eventToDelete.title}"?</p>
+            <p>Are you sure you want to delete the event "{eventToDelete.content}"?</p>
             <div className="flex justify-end gap-2">
               <button onClick={() => setIsDeleteModalOpen(false)} className="px-4 py-2 bg-gray-300 rounded">
                 Cancel

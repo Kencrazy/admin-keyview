@@ -10,7 +10,7 @@ import { cn } from "@/utils/cn";
 
 import PropTypes from "prop-types";
 
-export const Sidebar = forwardRef(({ collapsed }, ref) => {
+export const Sidebar = forwardRef(({ collapsed,checkDate }, ref) => {
     return (
         <aside
             ref={ref}
@@ -43,8 +43,8 @@ export const Sidebar = forwardRef(({ collapsed }, ref) => {
                         {navbarLink.links.map((link) => (
                             <NavLink
                                 key={link.label}
-                                to={link.path}
-                                className={cn("sidebar-item", collapsed && "md:w-[45px]")}
+                                to={checkDate ? "" :link.path}
+                                className={cn(!checkDate ? "sidebar-item":"sidebar-item-no-active", collapsed && "md:w-[45px]")}
                             >
                                 <link.icon
                                     size={22}

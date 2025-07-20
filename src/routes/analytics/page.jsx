@@ -5,7 +5,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { listOfIntegrations } from '../../constants';
 import CalendarLayout from '../../components/google_calendar';
 import { style } from 'framer-motion/client';
-function AnalyticsPage({metaData,orderData}) {
+function AnalyticsPage({event,setEvents,orderData}) {
     const orderTime = [
     { time: "08:00 AM - 10:00 AM", totalOrders: 0 },
     { time: "10:00 AM - 12:00 PM", totalOrders: 0 },
@@ -269,7 +269,7 @@ function AnalyticsPage({metaData,orderData}) {
             </div>
 
             <div className='card lg:flex hidden'>
-                <CalendarLayout event={metaData.event ? metaData.event : {}}/>
+                <CalendarLayout event={event} setEvents={setEvents}/>
             </div>
         </div>
     )

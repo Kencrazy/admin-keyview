@@ -12,10 +12,8 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../service/firebaseConfig";
 import { readUserMetadata } from "../service/readFirebase";
-// Pop up service
 
-
-const Layout = () => {
+const Layout = ({setCheckDate,checkDate,display,setDisplay,metaData,setMetaData}) => {
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -25,7 +23,7 @@ const Layout = () => {
                     localStorage.setItem("userId", user.uid);
                 }
             } else {
-                navigate("/login");
+                navigate("/login"); 
             }
         });
         return () => unsubscribe();
@@ -80,11 +78,17 @@ const Layout = () => {
             <Sidebar
                 ref={sidebarRef}
                 collapsed={collapsed}
+                checkDate={checkDate}
             />
             <div className={cn("transition-[margin] duration-300", collapsed ? "md:ml-[70px]" : "md:ml-[240px]")}>
                 <Header
                     collapsed={collapsed}
                     setCollapsed={setCollapsed}
+                    setCheckDate={setCheckDate}
+                    display={display}
+                    setDisplay={setDisplay}
+                    metaData={metaData}
+                    setMetaData={setMetaData}
                 />
                 <div className="h-[calc(100vh-60px)] overflow-y-auto overflow-x-hidden p-6">
                     <Outlet />

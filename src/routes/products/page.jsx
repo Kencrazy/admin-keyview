@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { Star, PencilLine, Trash } from "lucide-react";
-import SearchbarAndFilters from "../../components/filter";
+import SearchbarAndFilters from "../../components/filter"; 
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import { useTheme } from "@/hooks/use-theme";
 import striptags from "striptags";
 import { updateData, updateImageToFirebase } from "../../service/updateFirebase";
+import { deleteData, deleteImageFromFirebase } from "../../service/deleteFirebase";
 import cleanQuillHtml from "../../utils/cleanQuillHtml";
-import { storage } from "../../service/firebaseConfig";
+import { auth } from "../../service/firebaseConfig";
+import productImage from "../../assets/product-image.jpg";
 
 export default function ProductsPage({ productData, setProductData, metaData, setMetaData }) {
   const { theme } = useTheme();
@@ -15,6 +17,7 @@ export default function ProductsPage({ productData, setProductData, metaData, se
   const [currentPage, setCurrentPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isChanged, setIsChanged] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -26,17 +29,15 @@ export default function ProductsPage({ productData, setProductData, metaData, se
   });
   const [imagePreview, setImagePreview] = useState(null);
   const [errors, setErrors] = useState({});
-  const [imageUrls, setImageUrls] = useState({}); // New state to store preloaded image URLs
+  const [imageUrls, setImageUrls] = useState({});
   const itemsPerPage = 20;
 
-  // Initialize productTypes, ensuring "Other" is added only if not already present
   const [productTypes, setProductTypes] = useState(
     metaData?.productTypes
       ? [...new Set([...metaData.productTypes, "Other"])]
       : ["Other"]
   );
 
-  // Quill modules for toolbar
   const quillModules = {
     toolbar: [
       [{ header: [1, 2, false] }],
@@ -45,23 +46,15 @@ export default function ProductsPage({ productData, setProductData, metaData, se
     ],
   };
 
-  // Preload image URLs when productData changes
   useEffect(() => {
     const preloadImages = async () => {
       const urls = {};
       for (const product of productData) {
         try {
-          // Since product.image is already a download URL, verify it by attempting to load it
-          const img = new Image();
-          img.src = product.image;
-          await new Promise((resolve, reject) => {
-            img.onload = () => resolve();
-            img.onerror = () => reject(new Error(`Failed to load image for ${product.name}`));
-          });
-          urls[product.number] = product.image; // Store valid URL
+          urls[product.number] = product.image;
         } catch (error) {
           console.error(`Error preloading image for ${product.name}:`, error);
-          urls[product.number] = "/fallback-image.jpg"; // Fallback image
+          urls[product.number] = productImage;
         }
       }
       setImageUrls(urls);
@@ -69,11 +62,10 @@ export default function ProductsPage({ productData, setProductData, metaData, se
     preloadImages();
   }, [productData]);
 
-  // Save productTypes when page is hidden
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (!isChanged && document.visibilityState === "hidden") {
-        updateData("", { productTypes }, "");
+      if (isChanged && document.visibilityState === "hidden") {
+        updateData("", { productTypes }, "settings");
         setIsChanged(false);
       }
     };
@@ -83,7 +75,6 @@ export default function ProductsPage({ productData, setProductData, metaData, se
     };
   }, [productTypes, isChanged]);
 
-  // Validate form fields
   const validateForm = () => {
     const newErrors = {};
     if (!formData.name.trim()) newErrors.name = "Name is required";
@@ -94,7 +85,7 @@ export default function ProductsPage({ productData, setProductData, metaData, se
     if (formData.type === "Other" && !formData.newType.trim()) {
       newErrors.newType = "New type is required";
     }
-    if (!formData.image) newErrors.image = "Image is required";
+    if (!editingProduct && !formData.image) newErrors.image = "Image is required";
     if (!formData.price || parseFloat(formData.price) <= 0) {
       newErrors.price = "Price must be a positive number";
     }
@@ -107,9 +98,8 @@ export default function ProductsPage({ productData, setProductData, metaData, se
 
   useEffect(() => {
     validateForm();
-  }, [formData]);
+  }, [formData, editingProduct]);
 
-  // Filter products
   const filteredProducts = productData.filter((product) => {
     const query = searchQuery.toLowerCase();
     return (
@@ -122,19 +112,16 @@ export default function ProductsPage({ productData, setProductData, metaData, se
   const startIndex = (currentPage - 1) * itemsPerPage;
   const visibleProducts = filteredProducts.slice(startIndex, startIndex + itemsPerPage);
 
-  // Handle form input changes
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Handle Quill description change
   const handleDescriptionChange = (value) => {
     setFormData((prev) => ({ ...prev, description: value }));
   };
 
-  // Handle image upload
-  const handleImageChange = (eJonChange) => {
+  const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       setFormData((prev) => ({ ...prev, image: file }));
@@ -146,14 +133,76 @@ export default function ProductsPage({ productData, setProductData, metaData, se
     }
   };
 
-  // Handle form submission
+  const handleDeleteProduct = async (product) => {
+    if (!window.confirm(`Are you sure you want to delete ${product.name}?`)) return;
+    if (!auth.currentUser) {
+      alert("You must be logged in to delete a product.");
+      return;
+    }
+
+    try {
+      setProductData((prev) => prev.filter((p) => p.createdAt !== product.createdAt));
+      setImageUrls((prev) => {
+        const newUrls = { ...prev };
+        delete newUrls[product.number];
+        return newUrls;
+      });
+      await deleteImageFromFirebase(product.createdAt, product.createdAt, "products");
+      await deleteData("products", product.createdAt);
+      
+      alert("Product deleted successfully.");
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      alert("Failed to delete product. Please try again.");
+    }
+  };
+
+  const handleEditProduct = (product) => {
+    setEditingProduct(product);
+    setFormData({
+      name: product.name,
+      description: product.description,
+      type: productTypes.includes(product.type) ? product.type : "Other",
+      newType: productTypes.includes(product.type) ? "" : product.type,
+      image: null,
+      price: product.price.toString(),
+      shippingInfo: product.shippingInfo || "",
+    });
+    setImagePreview(product.image);
+    setIsModalOpen(true);
+  };
+
+  const handleToggleStatus = async (product) => {
+    if (!auth.currentUser) {
+      alert("You must be logged in to update product status.");
+      return;
+    }
+
+    const newStatus = product.status === "In Stock" ? "Out of Stock" : "In Stock";
+    const updatedProduct = { ...product, status: newStatus };
+
+    try {
+      await updateData("products", updatedProduct, product.createdAt);
+      setProductData((prev) =>
+        prev.map((p) => (p.createdAt === product.createdAt ? updatedProduct : p))
+      );
+      alert(`Product status updated to ${newStatus}.`);
+    } catch (error) {
+      console.error("Error updating product status:", error);
+      alert("Failed to update product status. Please try again.");
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
+    if (!auth.currentUser) {
+      alert("You must be logged in to save a product.");
+      return;
+    }
 
     const today = Date.now();
 
-    // Add new type only if it doesn't already exist
     if (formData.type === "Other" && formData.newType.trim()) {
       const newType = formData.newType.trim();
       if (!productTypes.includes(newType)) {
@@ -174,35 +223,78 @@ export default function ProductsPage({ productData, setProductData, metaData, se
       }
     }
 
-    // Upload image using updated function (handles both File and base64)
-    const imageUrl = await updateImageToFirebase(
-      formData.image || imagePreview, // Prefer File, fall back to base64
-      today.toString(),
-      "products",
-      today.toString()
-    );
-
-    if (!imageUrl) {
-      console.error("Failed to upload image");
-      return;
+    let imageUrl = editingProduct ? editingProduct.image : null;
+    if (formData.image) {
+      imageUrl = await updateImageToFirebase(
+        formData.image,
+        editingProduct ? editingProduct.createdAt : today.toString(),
+        "products",
+        editingProduct ? editingProduct.createdAt : today.toString()
+      );
+      if (!imageUrl) {
+        console.error("Failed to upload image");
+        alert("Failed to upload image. Please try again.");
+        return;
+      }
     }
 
-    const newProduct = {
+    const productPayload = {
       name: formData.name,
       description: formData.description,
       type: formData.type === "Other" ? formData.newType : formData.type,
       image: imageUrl,
       price: parseFloat(formData.price),
-      status: "In Stock",
-      rating: 0,
-      createdAt: today.toString(),
-      number: productData.length ? Math.max(...productData.map(p => p.number)) + 1 : 1, // Ensure unique product.number
+      status: editingProduct ? editingProduct.status : "In Stock",
+      rating: editingProduct ? editingProduct.rating : 0,
+      createdAt: editingProduct ? editingProduct.createdAt : today.toString(),
+      number: editingProduct ? editingProduct.number : productData.length ? Math.max(...productData.map((p) => p.number)) + 1 : 1,
+      shippingInfo: formData.shippingInfo,
     };
 
-    setProductData([...productData, newProduct]);
+    try {
+      await updateData("products", productPayload, productPayload.createdAt);
+      if (editingProduct) {
+        setProductData((prev) =>
+          prev.map((p) => (p.createdAt === editingProduct.createdAt ? productPayload : p))
+        );
+        setImageUrls((prev) => ({
+          ...prev,
+          [productPayload.number]: imageUrl,
+        }));
+      } else {
+        setProductData((prev) => [...prev, productPayload]);
+        setImageUrls((prev) => ({
+          ...prev,
+          [productPayload.number]: imageUrl,
+        }));
+      }
 
-    await updateData("products", newProduct, today.toString());
+      setFormData({
+        name: "",
+        description: "",
+        type: "",
+        newType: "",
+        image: null,
+        price: "",
+        shippingInfo: "",
+      });
+      setImagePreview(null);
+      setErrors({});
+      setEditingProduct(null);
+      setIsModalOpen(false);
+      alert(editingProduct ? "Product updated successfully." : "Product added successfully.");
+    } catch (error) {
+      console.error("Error saving product:", error);
+      alert("Failed to save product. Please try again.");
+    }
+  };
 
+  const handleAddProduct = () => {
+    if (!auth.currentUser) {
+      alert("You must be logged in to add a product.");
+      return;
+    }
+    setEditingProduct(null);
     setFormData({
       name: "",
       description: "",
@@ -213,16 +305,12 @@ export default function ProductsPage({ productData, setProductData, metaData, se
       shippingInfo: "",
     });
     setImagePreview(null);
-    setErrors({});
-    setIsModalOpen(false);
-  };
-
-  const handleAddProduct = () => {
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
+    setEditingProduct(null);
     setFormData({
       name: "",
       description: "",
@@ -236,13 +324,12 @@ export default function ProductsPage({ productData, setProductData, metaData, se
     setErrors({});
   };
 
-  // Compute form validity for Save button
   const isFormValid =
     formData.name.trim() &&
     striptags(formData.description).trim() &&
     formData.type &&
     (formData.type !== "Other" || formData.newType.trim()) &&
-    (formData.image || imagePreview) &&
+    (editingProduct || formData.image || imagePreview) &&
     parseFloat(formData.price) > 0 &&
     formData.shippingInfo.trim();
 
@@ -299,7 +386,12 @@ export default function ProductsPage({ productData, setProductData, metaData, se
                       </div>
                     </td>
                     <td className="table-cell">{product.price}</td>
-                    <td className="table-cell">{product.status}</td>
+                    <td 
+                      className="table-cell cursor-pointer hover:text-blue-500 dark:hover:text-blue-400"
+                      onClick={() => handleToggleStatus(product)}
+                    >
+                      {product.status}
+                    </td>
                     <td className="table-cell">
                       <div className="flex items-center gap-x-2">
                         <Star size={18} className="fill-yellow-600 stroke-yellow-600" />
@@ -308,10 +400,16 @@ export default function ProductsPage({ productData, setProductData, metaData, se
                     </td>
                     <td className="table-cell">
                       <div className="flex items-center gap-x-4">
-                        <button className="text-blue-500 dark:text-blue-600">
+                        <button
+                          onClick={() => handleEditProduct(product)}
+                          className="text-blue-500 dark:text-blue-600"
+                        >
                           <PencilLine size={20} />
                         </button>
-                        <button className="text-red-500">
+                        <button
+                          onClick={() => handleDeleteProduct(product)}
+                          className="text-red-500"
+                        >
                           <Trash size={20} />
                         </button>
                       </div>
@@ -352,7 +450,9 @@ export default function ProductsPage({ productData, setProductData, metaData, se
             }`}
           >
             <div className="bg-gradient-to-r from-blue-500 to-cyan-500 dark:from-blue-700 dark:to-cyan-700 p-4 rounded-t-xl -m-6 mb-4">
-              <h2 className="text-xl font-bold text-white">Add New Product</h2>
+              <h2 className="text-xl font-bold text-white">
+                {editingProduct ? "Edit Product" : "Add New Product"}
+              </h2>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -520,7 +620,7 @@ export default function ProductsPage({ productData, setProductData, metaData, se
                       : "opacity-50 cursor-not-allowed"
                   }`}
                 >
-                  Save Product
+                  {editingProduct ? "Update Product" : "Save Product"}
                 </button>
               </div>
             </form>

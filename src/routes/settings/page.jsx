@@ -25,12 +25,10 @@ export default function SettingsPage({ metaData, setMetaData }) {
   const [dragIndex, setDragIndex] = useState(null);
   const [hasBannerOrderChanged, setHasBannerOrderChanged] = useState(false);
 
-  // Sync localBanners with metaData.banners when metaData changes
   useEffect(() => {
     setLocalBanners(banners);
   }, [banners]);
 
-  // Handle visibilitychange to update banner order if changed
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden" && hasBannerOrderChanged) {
@@ -359,7 +357,6 @@ export default function SettingsPage({ metaData, setMetaData }) {
         </div>
       </div>
 
-      {/* Slide-in Store Name Input Panel */}
       <div
         className={`fixed bottom-4 right-0 w-80 bg-gray-100 dark:bg-gray-800 p-4 rounded-lg shadow-lg transform transition-transform duration-300 ${
           isStoreNameInputOpen ? "translate-x-0" : "translate-x-full"
@@ -406,7 +403,6 @@ export default function SettingsPage({ metaData, setMetaData }) {
         </div>
       </div>
 
-      {/* Slide-in Shop Icon Input Panel */}
       <div
         className={`fixed bottom-20 right-0 w-80 bg-gray-100 dark:bg-gray-800 p-4 rounded-lg shadow-lg transform transition-transform duration-300 ${
           isIconInputOpen ? "translate-x-0" : "translate-x-full"
@@ -502,6 +498,21 @@ export default function SettingsPage({ metaData, setMetaData }) {
             Save
           </button>
         </div>
+      </div>
+
+      <div className="flex items-center justify-between p-4">
+        <div>
+          <p className="font-semibold">Support the Creator</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Hey there! If you enjoy using Keyview, consider supporting the creator by following. Your support helps keep the project alive and thriving!
+          </p>
+        </div>
+        <button
+          onClick={() => window.open('https://www.facebook.com/profile.php?id=61560072484609', '_blank')}
+          className="text-sm px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
+        >
+          Follow on Facebook
+        </button>
       </div>
     </div>
   );

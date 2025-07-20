@@ -1,9 +1,31 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import GooglePayButton from '@google-pay/button-react';
+import { updateData } from '../../service/updateFirebase';
 
-export default function Plan() {
+export default function Plan({ metaData, setMetaData,setCheckDate }) {
+  const handleUpdatePlan = async () => {
+    const today = new Date();
+    const dueDate = new Date(metaData.due);
+    let baseDate = dueDate > today ? dueDate : today;
+    baseDate.setDate(baseDate.getDate() + 30);
+    const newDue = baseDate.toISOString();
+    await updateData("", { due: newDue }, "");
+    setMetaData(prev => ({ ...prev, due: newDue }));
+    setCheckDate(false)
+  };
+
+  const handlePaymentSuccess = async (paymentRequest) => {
+    console.log('Payment successful', paymentRequest);
+    try {
+      await handleUpdatePlan();
+      console.log('Due date updated successfully');
+    } catch (error) {
+      console.error('Error updating due date:', error);
+    }
+  };
+
   return (
-    /* Animate from 0 opacity and 90% scale to full */
     <motion.div
       initial={{ opacity: 0, scale: 0.9, y: -20 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -28,12 +50,41 @@ export default function Plan() {
         </div>
       </div>
       <div className="flex px-6 pb-8 sm:px-8">
-        <button
-          aria-describedby="tier-company"
-          className="flex items-center justify-center w-full px-6 py-2.5 text-center text-white duration-200 bg-black border-2 border-black rounded-full hover:bg-transparent hover:border-black hover:text-black focus:outline-none focus-visible:outline-black text-sm focus-visible:ring-black"
-        >
-          Buy Now
-        </button>
+        <GooglePayButton
+          environment="PRODUCTION"
+          paymentRequest={{
+            apiVersion: 2,
+            apiVersionMinor: 0,
+            allowedPaymentMethods: [
+              {
+                type: 'CARD',
+                parameters: {
+                  allowedAuthMethods: ['PAN_ONLY', 'CRYPTOGRAM_3DS'],
+                  allowedCardNetworks: ['MASTERCARD', 'VISA'],
+                },
+                tokenizationSpecification: {
+                  type: 'PAYMENT_GATEWAY',
+                  parameters: {
+                    gateway: 'example',
+                    gatewayMerchantId: 'exampleGatewayMerchantId',
+                  },
+                },
+              },
+            ],
+            merchantInfo: {
+              merchantId: 'BCR2DN7TZCX7PLKZ',
+              merchantName: 'Update your Keyview plan',
+            },
+            transactionInfo: {
+              totalPriceStatus: 'FINAL',
+              totalPriceLabel: 'Total',
+              totalPrice: '1.00',
+              currencyCode: 'USD',
+              countryCode: 'VN',
+            },
+          }}
+          onLoadPaymentData={handlePaymentSuccess}
+        />
       </div>
     </motion.div>
   );
