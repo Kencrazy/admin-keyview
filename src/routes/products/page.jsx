@@ -16,6 +16,7 @@ export default function ProductsPage({ productData, setProductData, metaData, se
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
   const [isChanged, setIsChanged] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [formData, setFormData] = useState({
@@ -25,10 +26,18 @@ export default function ProductsPage({ productData, setProductData, metaData, se
     newType: "",
     image: null,
     price: "",
+    discount: "",
     shippingInfo: "",
+  });
+  const [discountRanges, setDiscountRanges] = useState(metaData?.discountRanges || []);
+  const [discountForm, setDiscountForm] = useState({
+    minPrice: "",
+    maxPrice: "",
+    discount: "",
   });
   const [imagePreview, setImagePreview] = useState(null);
   const [errors, setErrors] = useState({});
+  const [discountErrors, setDiscountErrors] = useState({});
   const [imageUrls, setImageUrls] = useState({});
   const itemsPerPage = 20;
 
@@ -65,7 +74,7 @@ export default function ProductsPage({ productData, setProductData, metaData, se
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (isChanged && document.visibilityState === "hidden") {
-        updateData("", { productTypes }, "settings");
+        updateData("", { productTypes, discountRanges }, "settings");
         setIsChanged(false);
       }
     };
@@ -73,7 +82,7 @@ export default function ProductsPage({ productData, setProductData, metaData, se
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [productTypes, isChanged]);
+  }, [productTypes, discountRanges, isChanged]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -89,6 +98,9 @@ export default function ProductsPage({ productData, setProductData, metaData, se
     if (!formData.price || parseFloat(formData.price) <= 0) {
       newErrors.price = "Price must be a positive number";
     }
+    if (formData.discount && (parseFloat(formData.discount) < 0 || parseFloat(formData.discount) > 100)) {
+      newErrors.discount = "Discount must be between 0 and 100";
+    }
     if (!formData.shippingInfo.trim()) {
       newErrors.shippingInfo = "Shipping information is required";
     }
@@ -96,9 +108,28 @@ export default function ProductsPage({ productData, setProductData, metaData, se
     return Object.keys(newErrors).length === 0;
   };
 
+  const validateDiscountForm = () => {
+    const newErrors = {};
+    if (discountForm.minPrice && parseFloat(discountForm.minPrice) < 0) {
+      newErrors.minPrice = "Minimum price must be a non-negative number";
+    }
+    if (discountForm.maxPrice && discountForm.minPrice && parseFloat(discountForm.maxPrice) <= parseFloat(discountForm.minPrice)) {
+      newErrors.maxPrice = "Maximum price must be greater than minimum price";
+    }
+    if (!discountForm.discount || parseFloat(discountForm.discount) < 0 || parseFloat(discountForm.discount) > 100) {
+      newErrors.discount = "Discount must be between 0 and 100";
+    }
+    setDiscountErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   useEffect(() => {
     validateForm();
   }, [formData, editingProduct]);
+
+  useEffect(() => {
+    validateDiscountForm();
+  }, [discountForm]);
 
   const filteredProducts = productData.filter((product) => {
     const query = searchQuery.toLowerCase();
@@ -115,6 +146,11 @@ export default function ProductsPage({ productData, setProductData, metaData, se
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleDiscountInputChange = (e) => {
+    const { name, value } = e.target;
+    setDiscountForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleDescriptionChange = (value) => {
@@ -149,7 +185,6 @@ export default function ProductsPage({ productData, setProductData, metaData, se
       });
       await deleteImageFromFirebase(product.createdAt, product.createdAt, "products");
       await deleteData("products", product.createdAt);
-      
       alert("Product deleted successfully.");
     } catch (error) {
       console.error("Error deleting product:", error);
@@ -166,6 +201,7 @@ export default function ProductsPage({ productData, setProductData, metaData, se
       newType: productTypes.includes(product.type) ? "" : product.type,
       image: null,
       price: product.price.toString(),
+      discount: (product.discount || 0).toString(),
       shippingInfo: product.shippingInfo || "",
     });
     setImagePreview(product.image);
@@ -244,6 +280,7 @@ export default function ProductsPage({ productData, setProductData, metaData, se
       type: formData.type === "Other" ? formData.newType : formData.type,
       image: imageUrl,
       price: parseFloat(formData.price),
+      discount: formData.discount ? parseFloat(formData.discount) : 0,
       status: editingProduct ? editingProduct.status : "In Stock",
       rating: editingProduct ? editingProduct.rating : 0,
       createdAt: editingProduct ? editingProduct.createdAt : today.toString(),
@@ -276,6 +313,7 @@ export default function ProductsPage({ productData, setProductData, metaData, se
         newType: "",
         image: null,
         price: "",
+        discount: "",
         shippingInfo: "",
       });
       setImagePreview(null);
@@ -302,10 +340,118 @@ export default function ProductsPage({ productData, setProductData, metaData, se
       newType: "",
       image: null,
       price: "",
+      discount: "",
       shippingInfo: "",
     });
     setImagePreview(null);
     setIsModalOpen(true);
+  };
+
+  const handleOpenDiscountModal = () => {
+    if (!auth.currentUser) {
+      alert("You must be logged in to manage discounts.");
+      return;
+    }
+    setDiscountForm({
+      minPrice: "",
+      maxPrice: "",
+      discount: "",
+    });
+    setDiscountErrors({});
+    setIsDiscountModalOpen(true);
+  };
+
+  const handleCloseDiscountModal = () => {
+    setIsDiscountModalOpen(false);
+    setDiscountForm({
+      minPrice: "",
+      maxPrice: "",
+      discount: "",
+    });
+    setDiscountErrors({});
+  };
+
+  const handleDiscountSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateDiscountForm()) return;
+    if (!auth.currentUser) {
+      alert("You must be logged in to set discounts.");
+      return;
+    }
+
+    const minPrice = discountForm.minPrice ? parseFloat(discountForm.minPrice) : 0;
+    const maxPrice = discountForm.maxPrice ? parseFloat(discountForm.maxPrice) : Infinity;
+    const discount = parseFloat(discountForm.discount);
+
+    const newDiscountRange = { minPrice, maxPrice, discount, id: Date.now().toString() };
+
+    try {
+      const updatedDiscountRanges = [...discountRanges, newDiscountRange];
+      setDiscountRanges(updatedDiscountRanges);
+      setMetaData((prevMetaData) => ({
+        ...prevMetaData,
+        discountRanges: updatedDiscountRanges,
+      }));
+      setIsChanged(true);
+
+      const updatedProducts = productData.map((product) => {
+        const applicableDiscount = updatedDiscountRanges
+          .filter((range) => product.price >= range.minPrice && product.price <= range.maxPrice)
+          .reduce((maxDiscount, range) => Math.max(maxDiscount, range.discount), product.discount || 0);
+        return { ...product, discount: applicableDiscount };
+      });
+
+      for (const product of updatedProducts) {
+        await updateData("products", product, product.createdAt);
+      }
+
+      setProductData(updatedProducts);
+      setIsDiscountModalOpen(false);
+      setDiscountForm({
+        minPrice: "",
+        maxPrice: "",
+        discount: "",
+      });
+      setDiscountErrors({});
+      alert(`Discount range added: ${discount}% for products between ${minPrice} and ${maxPrice === Infinity ? "Infinity" : maxPrice}.`);
+    } catch (error) {
+      console.error("Error applying discount range:", error);
+      alert("Failed to apply discount range. Please try again.");
+    }
+  };
+
+  const handleDeleteDiscountRange = async (rangeId) => {
+    if (!auth.currentUser) {
+      alert("You must be logged in to delete discounts.");
+      return;
+    }
+
+    try {
+      const updatedDiscountRanges = discountRanges.filter((range) => range.id !== rangeId);
+      setDiscountRanges(updatedDiscountRanges);
+      setMetaData((prevMetaData) => ({
+        ...prevMetaData,
+        discountRanges: updatedDiscountRanges,
+      }));
+      setIsChanged(true);
+
+      const updatedProducts = productData.map((product) => {
+        const applicableDiscount = updatedDiscountRanges
+          .filter((range) => product.price >= range.minPrice && product.price <= range.maxPrice)
+          .reduce((maxDiscount, range) => Math.max(maxDiscount, range.discount), product.discount || 0);
+        return { ...product, discount: applicableDiscount };
+      });
+
+      for (const product of updatedProducts) {
+        await updateData("products", product, product.createdAt);
+      }
+
+      setProductData(updatedProducts);
+      alert("Discount range deleted successfully.");
+    } catch (error) {
+      console.error("Error deleting discount range:", error);
+      alert("Failed to delete discount range. Please try again.");
+    }
   };
 
   const handleCloseModal = () => {
@@ -318,6 +464,7 @@ export default function ProductsPage({ productData, setProductData, metaData, se
       newType: "",
       image: null,
       price: "",
+      discount: "",
       shippingInfo: "",
     });
     setImagePreview(null);
@@ -331,7 +478,15 @@ export default function ProductsPage({ productData, setProductData, metaData, se
     (formData.type !== "Other" || formData.newType.trim()) &&
     (editingProduct || formData.image || imagePreview) &&
     parseFloat(formData.price) > 0 &&
-    formData.shippingInfo.trim();
+    formData.shippingInfo.trim() &&
+    (!formData.discount || (parseFloat(formData.discount) >= 0 && parseFloat(formData.discount) <= 100));
+
+  const isDiscountFormValid =
+    discountForm.discount &&
+    parseFloat(discountForm.discount) >= 0 &&
+    parseFloat(discountForm.discount) <= 100 &&
+    (!discountForm.minPrice || parseFloat(discountForm.minPrice) >= 0) &&
+    (!discountForm.maxPrice || !discountForm.minPrice || parseFloat(discountForm.maxPrice) > parseFloat(discountForm.minPrice));
 
   return (
     <div>
@@ -349,6 +504,14 @@ export default function ProductsPage({ productData, setProductData, metaData, se
         showAddProduct={true}
         addProduct={handleAddProduct}
       />
+      <div className="flex justify-end mt-2">
+        <button
+          onClick={handleOpenDiscountModal}
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+        >
+          Manage Discount Ranges
+        </button>
+      </div>
       <div className="card mt-4">
         <div className="card-body p-0">
           <div className="relative h-fit w-full flex-shrink-0 overflow-auto rounded-none [scrollbar-width:_thin]">
@@ -357,6 +520,7 @@ export default function ProductsPage({ productData, setProductData, metaData, se
                 <tr className="table-row">
                   <th className="table-head">Product</th>
                   <th className="table-head">Price</th>
+                  <th className="table-head">Discount</th>
                   <th className="table-head">Status</th>
                   <th className="table-head">Rating</th>
                   <th className="table-head">Action</th>
@@ -385,7 +549,15 @@ export default function ProductsPage({ productData, setProductData, metaData, se
                         </div>
                       </div>
                     </td>
-                    <td className="table-cell">{product.price}</td>
+                    <td className="table-cell">
+                      ${product.price.toFixed(2)}
+                      {product.discount > 0 && (
+                        <span className="text-red-500 ml-2">
+                          (-{product.discount}%)
+                        </span>
+                      )}
+                    </td>
+                    <td className="table-cell">{product.discount || 0}%</td>
                     <td 
                       className="table-cell cursor-pointer hover:text-blue-500 dark:hover:text-blue-400"
                       onClick={() => handleToggleStatus(product)}
@@ -486,13 +658,30 @@ export default function ProductsPage({ productData, setProductData, metaData, se
                 </div>
               </div>
               <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">Discount (%)</label>
+                <input
+                  type="number"
+                  name="discount"
+                  value={formData.discount}
+                  onChange={handleInputChange}
+                  className={`w-full p-2 border rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-slate-300 dark:border-slate-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 ${
+                    errors.discount ? "border-red-500 dark:border-red-500" : ""
+                  }`}
+                  step="0.1"
+                  min="0"
+                  max="100"
+                  placeholder="Enter discount (0-100, optional)"
+                />
+                {errors.discount && <p className="text-red-500 text-xs mt-1">{errors.discount}</p>}
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">Description</label>
                 <ReactQuill
                   value={formData.description}
                   onChange={handleDescriptionChange}
                   modules={quillModules}
                   theme="snow"
-                  className={`bg-white dark:bg-slate-800 text-slate-900 dark:text-white [&_.ql-toolbar]:bg-slate-100  [&_.ql-container]:border-slate-300 dark:[&_.ql-container]:border-slate-600 [&_.ql-editor]:min-h-[100px] ${
+                  className={`bg-white dark:bg-slate-800 text-slate-900 dark:text-white [&_.ql-toolbar]:bg-slate-100 [&_.ql-container]:border-slate-300 dark:[&_.ql-container]:border-slate-600 [&_.ql-editor]:min-h-[100px] ${
                     errors.description ? "[&_.ql-container]:border-red-500 dark:[&_.ql-container]:border-red-500" : ""
                   }`}
                 />
@@ -625,6 +814,113 @@ export default function ProductsPage({ productData, setProductData, metaData, se
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {isDiscountModalOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 transition-opacity duration-300">
+          <div
+            className={`relative bg-white dark:bg-slate-900 p-6 rounded-xl shadow-2xl max-w-lg w-[90%] transform transition-transform duration-300 ${
+              isDiscountModalOpen ? "scale-100" : "scale-0"
+            }`}
+          >
+            <div className="bg-gradient-to-r from-blue-500 to-cyan-500 dark:from-blue-700 dark:to-cyan-700 p-4 rounded-t-xl -m-6 mb-4">
+              <h2 className="text-xl font-bold text-white">Manage Discount Ranges</h2>
+            </div>
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200">Current Discount Ranges</h3>
+              {discountRanges.length > 0 ? (
+                <ul className="mt-2 space-y-2">
+                  {discountRanges.map((range) => (
+                    <li key={range.id} className="flex justify-between items-center p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                      <span>
+                        {range.discount}% off for ${range.minPrice} to {range.maxPrice === Infinity ? "Infinity" : `$${range.maxPrice}`}
+                      </span>
+                      <button
+                        onClick={() => handleDeleteDiscountRange(range.id)}
+                        className="text-red-500 hover:text-red-600"
+                      >
+                        <Trash size={20} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-slate-600 dark:text-slate-400">No discount ranges set.</p>
+              )}
+            </div>
+            <form onSubmit={handleDiscountSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">Minimum Price (optional)</label>
+                <input
+                  type="number"
+                  name="minPrice"
+                  value={discountForm.minPrice}
+                  onChange={handleDiscountInputChange}
+                  className={`w-full p-2 border rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-slate-300 dark:border-slate-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 ${
+                    discountErrors.minPrice ? "border-red-500 dark:border-red-500" : ""
+                  }`}
+                  step="0.01"
+                  min="0"
+                  placeholder="Leave blank for 0"
+                />
+                {discountErrors.minPrice && <p className="text-red-500 text-xs mt-1">{discountErrors.minPrice}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">Maximum Price (optional)</label>
+                <input
+                  type="number"
+                  name="maxPrice"
+                  value={discountForm.maxPrice}
+                  onChange={handleDiscountInputChange}
+                  className={`w-full p-2 border rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-slate-300 dark:border-slate-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 ${
+                    discountErrors.maxPrice ? "border-red-500 dark:border-red-500" : ""
+                  }`}
+                  step="0.01"
+                  min="0"
+                  placeholder="Leave blank for Infinity"
+                />
+                {discountErrors.maxPrice && <p className="text-red-500 text-xs mt-1">{discountErrors.maxPrice}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">Discount (%)</label>
+                <input
+                  type="number"
+                  name="discount"
+                  value={discountForm.discount}
+                  onChange={handleDiscountInputChange}
+                  className={`w-full p-2 border rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-slate-300 dark:border-slate-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 ${
+                    discountErrors.discount ? "border-red-500 dark:border-red-500" : ""
+                  }`}
+                  step="0.1"
+                  min="0"
+                  max="100"
+                  placeholder="Enter discount (0-100)"
+                />
+                {discountErrors.discount && <p className="text-red-500 text-xs mt-1">{discountErrors.discount}</p>}
+              </div>
+              <div className="flex justify-end gap-2 pt-4">
+                <button
+                  type="button"
+                  onClick={handleCloseDiscountModal}
+                  className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!isDiscountFormValid}
+                  className={`px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 dark:from-blue-600 dark:to-cyan-600 text-white rounded-lg transition-colors ${
+                    isDiscountFormValid
+                      ? "hover:from-blue-600 hover:to-cyan-600 dark:hover:from-blue-700 dark:hover:to-cyan-700"
+                      : "opacity-50 cursor-not-allowed"
+                  }`}
+                >
+                  Add Discount Range
+                </button>
+              </div>
+            </form>
+          </div>  
         </div>
       )}
     </div>
