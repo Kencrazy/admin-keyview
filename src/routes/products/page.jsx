@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Star, PencilLine, Trash } from "lucide-react";
-import SearchbarAndFilters from "../../components/filter"; 
+import SearchbarAndFilters from "../../components/filter";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import { useTheme } from "@/hooks/use-theme";
@@ -39,13 +39,11 @@ export default function ProductsPage({ productData, setProductData, metaData, se
   const [errors, setErrors] = useState({});
   const [discountErrors, setDiscountErrors] = useState({});
   const [imageUrls, setImageUrls] = useState({});
-  const itemsPerPage = 20;
-
   const [productTypes, setProductTypes] = useState(
     metaData?.productTypes
-      ? [...new Set([...metaData.productTypes, "Other"])]
-      : ["Other"]
+      && [...new Set([...metaData.productTypes, "Other"])]
   );
+  const itemsPerPage = 20;
 
   const quillModules = {
     toolbar: [
@@ -70,6 +68,13 @@ export default function ProductsPage({ productData, setProductData, metaData, se
     };
     preloadImages();
   }, [productData]);
+
+  useEffect(() => {
+    // Sync productTypes with metaData.productTypes when metaData changes
+    if (metaData?.productTypes) {
+      setProductTypes([...new Set([...metaData.productTypes, "Other"])]);
+    }
+  }, [metaData]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -238,24 +243,19 @@ export default function ProductsPage({ productData, setProductData, metaData, se
     }
 
     const today = Date.now();
+    let newProductTypes = [...productTypes];
 
+    // Handle new product type
     if (formData.type === "Other" && formData.newType.trim()) {
       const newType = formData.newType.trim();
-      if (!productTypes.includes(newType)) {
-        setIsChanged(true);
-        setProductTypes((prevTypes) => [
-          ...prevTypes.filter((t) => t !== "Other"),
-          newType,
-          "Other",
-        ]);
+      if (!newProductTypes.includes(newType)) {
+        newProductTypes = [...newProductTypes.filter((t) => t !== "Other"), newType, "Other"];
+        setProductTypes(newProductTypes);
         setMetaData((prevMetaData) => ({
           ...prevMetaData,
-          productTypes: [
-            ...prevMetaData.productTypes.filter((t) => t !== "Other"),
-            newType,
-            "Other",
-          ],
+          productTypes: newProductTypes,
         }));
+        setIsChanged(true);
       }
     }
 
@@ -304,6 +304,12 @@ export default function ProductsPage({ productData, setProductData, metaData, se
           ...prev,
           [productPayload.number]: imageUrl,
         }));
+      }
+
+      // Update settings with new product types
+      if (isChanged) {
+        await updateData("", { productTypes: newProductTypes, discountRanges }, "settings");
+        setIsChanged(false);
       }
 
       setFormData({
@@ -394,18 +400,8 @@ export default function ProductsPage({ productData, setProductData, metaData, se
       }));
       setIsChanged(true);
 
-      const updatedProducts = productData.map((product) => {
-        const applicableDiscount = updatedDiscountRanges
-          .filter((range) => product.price >= range.minPrice && product.price <= range.maxPrice)
-          .reduce((maxDiscount, range) => Math.max(maxDiscount, range.discount), product.discount || 0);
-        return { ...product, discount: applicableDiscount };
-      });
+      await updateData("", { productTypes, discountRanges: updatedDiscountRanges }, "settings");
 
-      for (const product of updatedProducts) {
-        await updateData("products", product, product.createdAt);
-      }
-
-      setProductData(updatedProducts);
       setIsDiscountModalOpen(false);
       setDiscountForm({
         minPrice: "",
@@ -415,8 +411,8 @@ export default function ProductsPage({ productData, setProductData, metaData, se
       setDiscountErrors({});
       alert(`Discount range added: ${discount}% for products between ${minPrice} and ${maxPrice === Infinity ? "Infinity" : maxPrice}.`);
     } catch (error) {
-      console.error("Error applying discount range:", error);
-      alert("Failed to apply discount range. Please try again.");
+      console.error("Error saving discount range:", error);
+      alert("Failed to save discount range. Please try again.");
     }
   };
 
@@ -435,18 +431,8 @@ export default function ProductsPage({ productData, setProductData, metaData, se
       }));
       setIsChanged(true);
 
-      const updatedProducts = productData.map((product) => {
-        const applicableDiscount = updatedDiscountRanges
-          .filter((range) => product.price >= range.minPrice && product.price <= range.maxPrice)
-          .reduce((maxDiscount, range) => Math.max(maxDiscount, range.discount), product.discount || 0);
-        return { ...product, discount: applicableDiscount };
-      });
+      await updateData("", { productTypes, discountRanges: updatedDiscountRanges }, "settings");
 
-      for (const product of updatedProducts) {
-        await updateData("products", product, product.createdAt);
-      }
-
-      setProductData(updatedProducts);
       alert("Discount range deleted successfully.");
     } catch (error) {
       console.error("Error deleting discount range:", error);
@@ -488,6 +474,9 @@ export default function ProductsPage({ productData, setProductData, metaData, se
     (!discountForm.minPrice || parseFloat(discountForm.minPrice) >= 0) &&
     (!discountForm.maxPrice || !discountForm.minPrice || parseFloat(discountForm.maxPrice) > parseFloat(discountForm.minPrice));
 
+    const formatPrice = (price) => {
+    return price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  };
   return (
     <div>
       <h1 className="title">Products</h1>
@@ -540,17 +529,14 @@ export default function ProductsPage({ productData, setProductData, metaData, se
                             e.target.src = "/fallback-image.jpg";
                           }}
                         />
-                        <div className="flex flex-col">
-                          <p>{product.name}</p>
-                          <p
-                            className="font-normal text-slate-600 dark:text-slate-400"
-                            dangerouslySetInnerHTML={{ __html: cleanQuillHtml(product.description) }}
-                          ></p>
+                        <div className="flex flex-col w-60 truncate">
+                          <p className="truncate" title={product.name} >{product.name}</p>
+                          <p>Type: {product.type}</p>
                         </div>
                       </div>
                     </td>
                     <td className="table-cell">
-                      ${product.price.toFixed(2)}
+                      {formatPrice(product.price)}
                       {product.discount > 0 && (
                         <span className="text-red-500 ml-2">
                           (-{product.discount}%)
@@ -615,7 +601,7 @@ export default function ProductsPage({ productData, setProductData, metaData, se
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 transition-opacity duration-300">
+        <div className="fixed inset-0 bg-black/60 flex max-h-[90%] overflow-y-scroll justify-center mt-20 z-50 transition-opacity duration-300">
           <div
             className={`relative bg-white dark:bg-slate-900 p-6 rounded-xl shadow-2xl max-w-7xl w-[90%] transform transition-transform duration-300 ${
               isModalOpen ? "scale-100" : "scale-0"
@@ -832,9 +818,9 @@ export default function ProductsPage({ productData, setProductData, metaData, se
               {discountRanges.length > 0 ? (
                 <ul className="mt-2 space-y-2">
                   {discountRanges.map((range) => (
-                    <li key={range.id} className="flex justify-between items-center p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                    <li key={range.id} className="flex justify-between items-center p-2 bg-slate-100 dark:text-white dark:bg-slate-800 rounded-lg">
                       <span>
-                        {range.discount}% off for ${range.minPrice} to {range.maxPrice === Infinity ? "Infinity" : `$${range.maxPrice}`}
+                        {range.discount}% off for {range.minPrice} to {range.maxPrice === Infinity ? "Infinity" : `${range.maxPrice}`}
                       </span>
                       <button
                         onClick={() => handleDeleteDiscountRange(range.id)}
@@ -920,7 +906,7 @@ export default function ProductsPage({ productData, setProductData, metaData, se
                 </button>
               </div>
             </form>
-          </div>  
+          </div>
         </div>
       )}
     </div>
