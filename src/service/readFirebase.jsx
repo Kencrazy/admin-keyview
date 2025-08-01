@@ -8,23 +8,19 @@ export const handleGetData = async () => {
         const userRef = doc(db, "stores", userId);
         const ordersRef = collection(userRef, "orders");
         const productsRef = collection(userRef, "products");
-        const settingsRef = collection(userRef, "settings");
         const docSnap = await getDoc(userRef);
-        const [ordersSnap, productsSnap, settingsSnap] = await Promise.all([
+        const [ordersSnap, productsSnap] = await Promise.all([
             getDocs(ordersRef),
             getDocs(productsRef),
-            getDocs(settingsRef)
         ]);
 
         const orders = ordersSnap.empty ? [] : ordersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         const products = productsSnap.empty ? [] : productsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        const settings = settingsSnap.empty ? [] : settingsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
         return {
             user: docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } : null,
             orders,
-            products,
-            settings
+            products
         };
     }catch (error) {
         console.error("Error getting data: ", error);

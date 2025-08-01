@@ -45,23 +45,46 @@ export default function ReportPage({ orderData }) {
     const matchSearch =
       order.orderId.toLowerCase().includes(query) ||
       order.customerName.toLowerCase().includes(query) ||
-      order.products.toLowerCase().includes(query) ||
+      order.products.some(product => product.name.toLowerCase().includes(query)) ||
       order.status.toLowerCase().includes(query) ||
       order.address.toLowerCase().includes(query) ||
       order.phoneNumber.toLowerCase().includes(query);
   
     const matchStatus = filterStatus ? order.status === filterStatus : true;
   
-    const orderDate = new Date(order.orderedDate).toISOString().split('T')[0]; 
+    const orderDate = new Date(order.orderedDate).toISOString().split('T')[0];
     const matchFromDate = fromDate ? orderDate >= fromDate : true;
     const matchToDate = toDate ? orderDate <= toDate : true;
   
     return matchSearch && matchStatus && matchFromDate && matchToDate;
-  });  
+  });
 
-  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+  // Flatten orders to one row per product
+  const flattenedOrders = filteredOrders.flatMap(order =>
+    order.products && order.products.length > 0
+      ? order.products.map(product => ({
+          orderId: order.orderId,
+          customerName: order.customerName,
+          product,
+          status: order.status,
+          orderedDate: order.orderedDate,
+          address: order.address,
+          phoneNumber: order.phoneNumber
+        }))
+      : [{
+          orderId: order.orderId,
+          customerName: order.customerName,
+          product: null,
+          status: order.status,
+          orderedDate: order.orderedDate,
+          address: order.address,
+          phoneNumber: order.phoneNumber
+        }]
+  );
+
+  const totalPages = Math.ceil(flattenedOrders.length / itemsPerPage);
   const startIndex = page * itemsPerPage;
-  const currentPageOrders = filteredOrders.slice(startIndex, startIndex + itemsPerPage);
+  const currentPageOrders = flattenedOrders.slice(startIndex, startIndex + itemsPerPage);
 
   const goToNextPage = () => {
     if (page < totalPages - 1) setPage(page + 1);
@@ -69,6 +92,10 @@ export default function ReportPage({ orderData }) {
 
   const goToPreviousPage = () => {
     if (page > 0) setPage(page - 1);
+  };
+
+  const formatPrice = (price) => {
+    return price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   };
 
   return (
@@ -108,7 +135,7 @@ export default function ReportPage({ orderData }) {
             <tr>
               <th className="border px-3 py-2 text-black dark:text-white">Order ID</th>
               <th className="border px-3 py-2 text-black dark:text-white">Customer Name</th>
-              <th className="border px-3 py-2 text-black dark:text-white">Products</th>
+              <th className="border px-3 py-2 text-black dark:text-white">Product Name</th>
               <th className="border px-3 py-2 text-black dark:text-white">Quantity</th>
               <th className="border px-3 py-2 text-black dark:text-white">Price Each</th>
               <th className="border px-3 py-2 text-black dark:text-white">Status</th>
@@ -118,29 +145,35 @@ export default function ReportPage({ orderData }) {
             </tr>
           </thead>
           <tbody>
-            {currentPageOrders.map((order, index) => (
-              <tr key={index} className="hover:bg-gray-50 text-dark-700 dark:text-gray-300">
-                <td className="border px-3 py-2">{order.orderId}</td>
-                <td className="border px-3 py-2">{order.customerName}</td>
-                <td className="border px-3 py-2">{order.products}</td>
-                <td className="border px-3 py-2">{order.quantityOrdered}</td>
-                <td className="border px-3 py-2">${order.priceEach.toFixed(2)}</td>
-                <td 
-                  className="border px-3 py-2 cursor-pointer hover:text-blue-500" 
-                  onClick={() => handleStatusChange(order.orderId)}
-                >
-                  {order.status}
+            {currentPageOrders.map((item, index) => (
+              <tr key={`${item.orderId}-${index}`} className="hover:bg-gray-50 text-dark-700 dark:text-gray-300">
+                <td className="border px-3 py-2">{item.orderId}</td>
+                <td className="border px-3 py-2">{item.customerName}</td>
+                <td className="border px-3 py-2">
+                  {item.product ? item.product.name : 'N/A'}
                 </td>
                 <td className="border px-3 py-2">
-                  {new Date(order.orderedDate).toLocaleString()}
+                  {item.product ? item.product.quantityOrdered : 'N/A'}
                 </td>
-                <td className="border px-3 py-2">{order.address}</td>
-                <td className="border px-3 py-2">{order.phoneNumber}</td>
+                <td className="border px-3 py-2">
+                  {item.product ? formatPrice(item.product.priceEach) : 'N/A'}
+                </td>
+                <td 
+                  className="border px-3 py-2 cursor-pointer hover:text-blue-500" 
+                  onClick={() => handleStatusChange(item.orderId)}
+                >
+                  {item.status}
+                </td>
+                <td className="border px-3 py-2">
+                  {new Date(item.orderedDate).toLocaleString()}
+                </td>
+                <td className="border px-3 py-2">{item.address}</td>
+                <td className="border px-3 py-2">{item.phoneNumber}</td>
               </tr>
             ))}
             {currentPageOrders.length === 0 && (
               <tr>
-                <td colSpan="9" className="text-center py-4 text-gray-500">
+                <td colSpan="10" className="text-center py-4 text-gray-500">
                   No orders found.
                 </td>
               </tr>
